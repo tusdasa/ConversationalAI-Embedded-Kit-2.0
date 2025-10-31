@@ -18,6 +18,9 @@
 #elif CONFIG_M5STACK_ATOMS3R_BOARD
 #include "es8311.h"
 #endif
+// 喵伴
+#include "es7210.h"
+
 
 #include "esp_timer.h"
 
@@ -28,6 +31,13 @@
 static const char *TAG = "AUDIO_PIPELINE";
 #define I2S_SAMPLE_RATE 16000
 #define ALGO_SAMPLE_RATE 16000
+
+//  喵伴
+#define ALGORITHM_STREAM_SAMPLE_BIT 32
+#define CHANNEL_FORMAT I2S_CHANNEL_TYPE_ONLY_LEFT
+#define ALGORITHM_INPUT_FORMAT "RM"
+#define CHANNEL_NUM 1
+
 #ifdef CONFIG_ESP32_S3_KORVO2_V3_BOARD
 #define ALGORITHM_STREAM_SAMPLE_BIT 32
 #define CHANNEL_FORMAT I2S_CHANNEL_TYPE_ONLY_LEFT
@@ -56,15 +66,23 @@ static audio_element_handle_t create_resample_stream(int src_rate, int src_ch, i
 
 static audio_element_handle_t create_record_i2s_stream(void)
 {
+    // 喵伴
+    es7210_adc_set_gain(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2, GAIN_34_5DB);
 #if CONFIG_ESP32_S3_KORVO2_V3_BOARD
     es7210_adc_set_gain(ES7210_INPUT_MIC3, GAIN_30DB);
 #elif CONFIG_M5STACK_ATOMS3R_BOARD
     es8311_set_mic_gain(ES8311_MIC_GAIN_36DB);
 #endif
+    // 喵伴
+    es7210_adc_set_gain(ES7210_INPUT_MIC3, GAIN_36DB);
+
+
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT_WITH_PARA(CODEC_ADC_I2S_PORT, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, AUDIO_STREAM_READER); // 参数需要仔细检查
-    i2s_cfg.type = AUDIO_STREAM_READER;
-    i2s_stream_set_channel_type(&i2s_cfg, CHANNEL_FORMAT);
-    i2s_cfg.std_cfg.clk_cfg.sample_rate_hz = I2S_SAMPLE_RATE;
+    // 喵伴
+    // i2s_cfg.type = AUDIO_STREAM_READER;
+    // i2s_stream_set_channel_type(&i2s_cfg, CHANNEL_FORMAT);
+    // i2s_cfg.std_cfg.clk_cfg.sample_rate_hz = I2S_SAMPLE_RATE;
+    
     return i2s_stream_init(&i2s_cfg);
 }
 
@@ -186,7 +204,10 @@ static audio_element_handle_t create_player_raw_stream(void)
 
 static audio_element_handle_t create_player_i2s_stream(void)
 {
-    i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT_WITH_PARA(I2S_NUM_0, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, AUDIO_STREAM_WRITER);
+    // i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT_WITH_PARA(I2S_NUM_0, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, AUDIO_STREAM_WRITER);
+    // 喵伴
+    i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT_WITH_PARA(I2S_NUM_0, 8000, ALGORITHM_STREAM_SAMPLE_BIT, AUDIO_STREAM_WRITER);
+
     i2s_cfg.type = AUDIO_STREAM_WRITER;
 #ifdef CONFIG_ESP32_S3_KORVO2_V3_BOARD
     i2s_cfg.need_expand = (16 != 32);
@@ -195,7 +216,10 @@ static audio_element_handle_t create_player_i2s_stream(void)
     i2s_cfg.buffer_len = 1416; // 708
     i2s_stream_set_channel_type(&i2s_cfg, CHANNEL_FORMAT);
     audio_element_handle_t stream = i2s_stream_init(&i2s_cfg);
-    i2s_stream_set_clk(stream, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, CHANNEL_NUM);
+    // i2s_stream_set_clk(stream, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, CHANNEL_NUM);
+    // 喵伴
+    i2s_stream_set_clk(stream, 8000, ALGORITHM_STREAM_SAMPLE_BIT, CHANNEL_NUM);
+
     return stream;
 }
 
