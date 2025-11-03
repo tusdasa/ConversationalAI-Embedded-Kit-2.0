@@ -262,7 +262,7 @@ static void _on_channel_error(byte_rtc_engine_t engine, const char* channel, int
 {
     volc_msg_t msg_data = {0};
     rtc_impl_t* rtc = (rtc_impl_t*) byte_rtc_get_user_data(engine);
-    LOGE("channel error %s:%d %s\n", channel, code, msg);
+    LOGE("channel error %s:%d %s\n", channel, code, msg ? msg : "");
     msg_data.code = code;
     msg_data.data.msg = (char *)msg;
     _send_message_2_user(rtc, &msg_data);
@@ -275,7 +275,7 @@ static void _on_global_error(byte_rtc_engine_t engine, int code, const char* mes
     rtc->b_channel_joined = false;
 
     rtc->b_first_keyframe_received = false;
-    LOGI("global error %d %s\n", code, message);
+    LOGI("global error %d %s\n", code, message ? message : "");
     msg_data.code = VOLC_MSG_DISCONNECTED;
     _send_message_2_user(rtc, &msg_data);
 };
@@ -303,7 +303,7 @@ static void _on_target_bitrate_changed(byte_rtc_engine_t engine, const char* cha
 
 static void _on_token_privilege_will_expire(byte_rtc_engine_t engine, const char* token)
 {
-    LOGI("\ntoken privilege will expire %s", token);
+    LOGI("\ntoken privilege will expire %s", token ? token : "");
     rtc_impl_t* rtc = (rtc_impl_t*) byte_rtc_get_user_data(engine);
     volc_msg_t msg_data = {0};
     msg_data.code = VOLC_MSG_TOKEN_EXPIRED;
@@ -337,7 +337,7 @@ static void _on_message_received(byte_rtc_engine_t engine, const char* channel_n
 
 static void _on_message_send_result(byte_rtc_engine_t engine, const char* channel_name, int64_t msgid, int error, const char* extencontent)
 {
-    LOGD("----------------------->MessageSendResult msg id %" PRId64 ", error %d, extencontent %s \n", msgid, error, extencontent);
+    LOGD("----------------------->MessageSendResult msg id %" PRId64 ", error %d, extencontent %s \n", msgid, error, extencontent ? extencontent : "");
 };
 
 static void _on_license_will_expire(byte_rtc_engine_t engine, int daysleft)
