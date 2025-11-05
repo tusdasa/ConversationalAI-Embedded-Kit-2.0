@@ -1,7 +1,6 @@
 // Copyright (2025) Beijing Volcano Engine Technology Ltd.
 // SPDX-License-Identifier: Apache-2.0
 #include "pipeline.h"
-
 #include <string.h>
 #include "esp_log.h"
 #include "sdkconfig.h"
@@ -18,17 +17,13 @@
 #elif CONFIG_M5STACK_ATOMS3R_BOARD
 #include "es8311.h"
 #endif
-
 #include "esp_timer.h"
-
 #if defined(CONFIG_VOLC_AUDIO_G711A)
 #include "g711_encoder.h"
 #include "g711_decoder.h"
 #endif
-
 #include "audio_idf_version.h"
 #include "raw_stream.h"
-
 #define CHANNEL 1
 static const char *TAG = "AUDIO_PIPELINE";
 #define I2S_SAMPLE_RATE 16000
@@ -44,7 +39,6 @@ static const char *TAG = "AUDIO_PIPELINE";
 #define ALGORITHM_INPUT_FORMAT "MR"
 #define CHANNEL_NUM 2
 #endif
-
 #if (CONFIG_VOLC_AUDIO_G711A)
 #define CODEC_NAME          "g711a"
 #define CODEC_SAMPLE_RATE   8000
@@ -78,7 +72,6 @@ static audio_element_handle_t create_record_i2s_stream(void)
     i2s_cfg.std_cfg.clk_cfg.sample_rate_hz = I2S_SAMPLE_RATE;
     return i2s_stream_init(&i2s_cfg);
 }
-
 static audio_element_handle_t create_record_encoder_stream(void)
 {
 #if(CONFIG_VOLC_AUDIO_G711A)
@@ -118,26 +111,20 @@ recorder_pipeline_handle_t recorder_pipeline_open()
 {
     recorder_pipeline_handle_t pipeline = heap_caps_calloc(1, sizeof(recorder_pipeline_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_DEFAULT);
     esp_log_level_set(TAG, ESP_LOG_INFO);
-
     // create and register streams
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
     pipeline->audio_pipeline = audio_pipeline_init(&pipeline_cfg);
     mem_assert(pipeline->audio_pipeline);
-
     pipeline->i2s_stream_reader = create_record_i2s_stream();
     audio_pipeline_register(pipeline->audio_pipeline, pipeline->i2s_stream_reader, "i2s");
-
     pipeline->algo_aec = create_record_algo_stream();
     audio_pipeline_register(pipeline->audio_pipeline, pipeline->algo_aec, "algo");
-
     pipeline->rsp = create_resample_stream(I2S_SAMPLE_RATE, 1, CODEC_SAMPLE_RATE, 1);
     audio_pipeline_register(pipeline->audio_pipeline, pipeline->rsp, "rsp");
-
     pipeline->audio_encoder = create_record_encoder_stream();
     if (pipeline->audio_encoder) {
         audio_pipeline_register(pipeline->audio_pipeline, pipeline->audio_encoder, CODEC_NAME);
     }
-
     pipeline->raw_reader = create_record_raw_stream();
     audio_pipeline_register(pipeline->audio_pipeline, pipeline->raw_reader, "raw");
 #if (CONFIG_VOLC_AUDIO_G711A)
@@ -154,7 +141,6 @@ void recorder_pipeline_close(recorder_pipeline_handle_t pipeline)
     audio_pipeline_stop(pipeline->audio_pipeline);
     audio_pipeline_wait_for_stop(pipeline->audio_pipeline);
     audio_pipeline_terminate(pipeline->audio_pipeline);
-
     if (pipeline->i2s_stream_reader)
     {
         audio_pipeline_unregister(pipeline->audio_pipeline, pipeline->i2s_stream_reader);
@@ -179,7 +165,6 @@ void recorder_pipeline_close(recorder_pipeline_handle_t pipeline)
         audio_pipeline_unregister(pipeline->audio_pipeline, pipeline->algo_aec);
         audio_element_deinit(pipeline->algo_aec);
     }
-
     audio_pipeline_deinit(pipeline->audio_pipeline);
     heap_caps_free(pipeline);
 };
@@ -203,6 +188,7 @@ audio_element_handle_t recorder_pipeline_get_raw_reader(recorder_pipeline_handle
 {
     return pipeline->raw_reader;
 };
+
 audio_pipeline_handle_t recorder_pipeline_get_pipeline(recorder_pipeline_handle_t pipeline)
 {
     return pipeline->audio_pipeline;
@@ -252,33 +238,26 @@ player_pipeline_handle_t player_pipeline_open(void)
     player_pipeline_handle_t player_pipeline = heap_caps_calloc(1, sizeof(player_pipeline_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_DEFAULT);
     esp_log_level_set(TAG, ESP_LOG_INFO);
     assert(player_pipeline != 0);
-
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
     player_pipeline->audio_pipeline = audio_pipeline_init(&pipeline_cfg);
     mem_assert(pipeline);
-
     player_pipeline->raw_writer = create_player_raw_stream();
     audio_pipeline_register(player_pipeline->audio_pipeline, player_pipeline->raw_writer, "raw");
-
     player_pipeline->i2s_stream_writer = create_player_i2s_stream();
     audio_pipeline_register(player_pipeline->audio_pipeline, player_pipeline->i2s_stream_writer, "i2s");
-
     player_pipeline->rsp = create_resample_stream(CODEC_SAMPLE_RATE, 1, I2S_SAMPLE_RATE, CHANNEL_NUM);
     audio_element_set_output_timeout(player_pipeline->rsp, portMAX_DELAY);
     audio_pipeline_register(player_pipeline->audio_pipeline, player_pipeline->rsp, "rsp");
-
     player_pipeline->audio_decoder = create_player_decoder_stream();
     if (player_pipeline->audio_decoder != NULL) {
         audio_pipeline_register(player_pipeline->audio_pipeline, player_pipeline->audio_decoder, CODEC_NAME);
     }
-
 #if (CONFIG_VOLC_AUDIO_G711A)
     const char *link_tag[] = {"raw", CODEC_NAME, "rsp", "i2s"};
 #else
     const char *link_tag[] = {"raw", "rsp", "i2s"};
 #endif
     audio_pipeline_link(player_pipeline->audio_pipeline, &link_tag[0], sizeof(link_tag) / sizeof(link_tag[0]));
-
     return player_pipeline;
 }
 
@@ -292,7 +271,6 @@ void player_pipeline_close(player_pipeline_handle_t player_pipeline)
     audio_pipeline_stop(player_pipeline->audio_pipeline);
     audio_pipeline_wait_for_stop(player_pipeline->audio_pipeline);
     audio_pipeline_terminate(player_pipeline->audio_pipeline);
-
     if (player_pipeline->raw_writer)
     {
         audio_pipeline_unregister(player_pipeline->audio_pipeline, player_pipeline->raw_writer);
@@ -312,7 +290,6 @@ void player_pipeline_close(player_pipeline_handle_t player_pipeline)
         audio_pipeline_unregister(player_pipeline->audio_pipeline, player_pipeline->audio_decoder);
         audio_element_deinit(player_pipeline->audio_decoder); 
     }
-
     audio_pipeline_deinit(player_pipeline->audio_pipeline);
     heap_caps_free(player_pipeline);
 };

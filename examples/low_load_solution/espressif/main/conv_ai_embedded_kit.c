@@ -35,13 +35,10 @@
 #include "cJSON.h"
 #include "network.h"
 #include "volc_conv_ai.h"
-#define ENABLE_BUTTON 0
 #define PRINT_TASK_INFO 0
-#if (ENABLE_BUTTON != 0)
+
 #include "iot_button.h"
 #include "button_gpio.h"
-#endif
-
 #define STATS_TASK_PRIO 5
 
 static const char *TAG = "VolcConvAI";
@@ -73,6 +70,19 @@ static char config_buf[1024] = {0};
 static char config_audio[256] = {0};
 static engine_context_t engine_ctx = {0};
 static bool is_ready = false;
+
+static void init_echoear_board_power(void)
+{
+    gpio_config_t io_conf;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = BIT64(GPIO_NUM_9) | BIT64(GPIO_NUM_48);
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 0;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&io_conf);
+    gpio_set_level(GPIO_NUM_9, 0);
+    gpio_set_level(GPIO_NUM_48, 1);
+}
 
 static void _on_volc_event(volc_engine_t handle, volc_event_t *event, void *user_data)
 {
@@ -183,6 +193,36 @@ void wait_for_time_sync(void)
     {
         ESP_LOGE(TAG, "Failed to synchronize time within timeout period");
     }
+}
+
+static void wifi_ap_event_cb(void *arg, void *data)
+{
+    button_event_t btn_evt = iot_button_get_event(arg);
+    if (btn_evt == BUTTON_LONG_PRESS_HOLD) {
+        ESP_LOGW(TAG, "=== LONG PRESS DETECTED === Wi-Fi reset + restart");
+        nvs_handle_t nvs;
+        if (nvs_open("wifi", NVS_READWRITE, &nvs) == ESP_OK) {
+            nvs_erase_key(nvs, "ssid");
+            nvs_erase_key(nvs, "password");
+            nvs_commit(nvs);
+            nvs_close(nvs);
+            ESP_LOGI(TAG, "Wi-Fi config erased from NVS");
+        }
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        ESP_LOGI(TAG, "Restarting ESP32 now...");
+        esp_restart();
+    }
+}
+static void button_init(void)
+{
+    button_config_t btn_config = { 0 };
+    btn_config.type = BUTTON_TYPE_GPIO;
+    btn_config.gpio_button_config.gpio_num = GPIO_NUM_0;
+    btn_config.gpio_button_config.active_level = 0;
+    
+    button_handle_t btn = NULL;
+    btn = iot_button_create(&btn_config);
+    iot_button_register_cb(btn, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);
 }
 
 static void sys_monitor_task(void *pvParameters)
@@ -297,21 +337,9 @@ static void conv_ai_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-#if (ENABLE_BUTTON != 0)
-static void button_event_cb(void *arg, void *data) {
-    button_event_t button_event = iot_button_get_event(arg);
-    if (button_event == BUTTON_PRESS_DOWN) {
-        ESP_LOGI(TAG, "button press down");
-        volc_interrupt(engine_ctx.engine);
-        is_interrupt = true;
-    } else if (button_event == BUTTON_PRESS_UP) {
-        ESP_LOGI(TAG, "button press up");
-    }
-}
-#endif
-
 void app_main(void)
 {
+    init_echoear_board_power();
     /* Initialize the default event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_log_level_set("*", ESP_LOG_INFO);
@@ -328,6 +356,8 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     ESP_ERROR_CHECK(esp_netif_init());
+
+    button_init();
 
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
@@ -351,22 +381,6 @@ void app_main(void)
 
     // Allow other core to finish initialization
     vTaskDelay(pdMS_TO_TICKS(2000));
-#if (ENABLE_BUTTON != 0)
-    button_config_t btn_cfg = { 0 };
-    btn_cfg.type = BUTTON_TYPE_ADC;
-    btn_cfg.adc_button_config.adc_channel = 4;
-    btn_cfg.adc_button_config.button_index = 0;
-    btn_cfg.adc_button_config.min = 2310;
-    btn_cfg.adc_button_config.max = 2510;
-    button_handle_t btn = NULL;
-    btn = iot_button_create(&btn_cfg);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create button handle");
-        return;
-    }
-    iot_button_register_cb(btn, BUTTON_PRESS_DOWN, button_event_cb, NULL);
-    iot_button_register_cb(btn, BUTTON_PRESS_UP, button_event_cb, NULL);
-#endif
 
     // Create and start stats task
     xTaskCreate(&conv_ai_task, "conv_ai_task", 8192, NULL, STATS_TASK_PRIO, NULL);
