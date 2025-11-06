@@ -13,9 +13,6 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "(android|Android|ANDROID)+")
 elseif("${CMAKE_SYSTEM_NAME}" MATCHES "(Darwin|darwin|MACOSX|macosx|MACOS|macos)+")
   set(PLATFORM_MACOS TRUE)
   add_compile_definitions(PLATFORM_MACOS)
-  set(VOLC_CONV_AI_PLATFORM_SRCS "osal/src/macos/volc_osal.c"
-                        CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 platform src file")
-  message(STATUS "VOLC_CONV_AI_PLATFORM_SRCS: ${VOLC_CONV_AI_PLATFORM_SRCS}")
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/common.cmake)

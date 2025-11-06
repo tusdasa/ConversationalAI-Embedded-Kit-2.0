@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "util/volc_list.h"
 #include "util/volc_log.h"
 
@@ -35,7 +35,7 @@ static cJSON *_read_item_object(cJSON *root, const char *fmt)
   cJSON *parent = root;
   cJSON *child = NULL;
   int fmt_size = strlen(fmt) + 1;
-  char *buf = (char *)hal_malloc(fmt_size);
+  char *buf = (char *)volc_osal_malloc(fmt_size);
   char *buf_p = buf;
   int offset = 0;
   int arr_index;
@@ -121,7 +121,7 @@ static int _read_item_string(cJSON *root, const char *fmt, char **dst)
     return -1;
   }
   if (NULL != dst) {
-    *dst = (char *)hal_malloc(strlen(obj->valuestring) + 1);
+    *dst = (char *)volc_osal_malloc(strlen(obj->valuestring) + 1);
     if (NULL == *dst) {
       LOGE("memory alloc failed");
       return -1;

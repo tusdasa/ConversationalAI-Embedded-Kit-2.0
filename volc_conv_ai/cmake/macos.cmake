@@ -7,7 +7,7 @@ option(ENABLE_MBEDTLS "Enable Mbedtls" ON)
 
 if(NOT DEFINED VOLC_CONV_AI_PLATFORM_SRCS)
     set(VOLC_CONV_AI_PLATFORM_SRCS
-        "${CMAKE_CURRENT_LIST_DIR}/../platforms/src/macos/volc_platform.c"
+        "${CMAKE_CURRENT_LIST_DIR}/../osal/src/macos/volc_osal.c"
         CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 platform src file")
 endif()
 

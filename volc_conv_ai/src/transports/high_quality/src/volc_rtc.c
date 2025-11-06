@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "util/volc_list.h"
 #include "util/volc_log.h"
 #include "util/volc_json.h"
@@ -54,9 +54,9 @@ static int _build_binary_message(const char* magic, const char* message,
     
     // 分配内存：魔术字 + 4字节长度 + 消息内容
     *out_len = magic_len + 4 + msg_len;
-    *out_buf = (uint8_t*)hal_malloc(*out_len);
+    *out_buf = (uint8_t*)volc_osal_malloc(*out_len);
     if (!*out_buf) {
-        LOGE("hal_malloc failed");
+        LOGE("volc_osal_malloc failed");
         return -1;
     }
     
@@ -462,7 +462,7 @@ static int __rtc_init(rtc_impl_t* engine, cJSON* p_config)
 
 volc_rtc_t volc_rtc_create(const char* appid, void* context, cJSON* p_config, volc_msg_cb message_callback, volc_data_cb data_callback)
 {
-    rtc_impl_t* rtc = (rtc_impl_t*) hal_calloc(1, sizeof(rtc_impl_t));
+    rtc_impl_t* rtc = (rtc_impl_t*) volc_osal_calloc(1, sizeof(rtc_impl_t));
     if (!rtc) {
         LOGE("volc_rtc_create: malloc rtc failed");
         return NULL;

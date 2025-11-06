@@ -1,3 +1,6 @@
+// Copyright (2025) Beijing Volcano Engine Technology Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // include ---------------------------------------------------------------------
 #include "../inc/aios.h"
 #include <string.h>
@@ -11,7 +14,7 @@
 #include <netinet/in.h>
 // time
 #include <sys/time.h>
-#include "volc_platform.h"
+#include "volc_osal.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -254,7 +257,7 @@ void aios_init(int event_size)
 
     aios.sub_general = 0;
     volc_list_init(&aios.event_list);
-    aios.event_mutex = hal_mutex_create();
+    aios.event_mutex = volc_osal_mutex_create();
     if (NULL == aios.event_mutex) {
         printf("aios_init: event_mutex create fail\n");
         return;
@@ -263,14 +266,14 @@ void aios_init(int event_size)
 
     aios.init_end = 1;
     aios.time = 0;
-    aios.timer_mutex = hal_mutex_create();
+    aios.timer_mutex = volc_osal_mutex_create();
     if (NULL == aios.timer_mutex) {
         printf("aios_init: timer_mutex create fail\n");
         return;
     }
     printf("timer: %p\n", aios.timer_mutex);
 
-    aios.sub_table = (uint32_t *)hal_malloc(sizeof(uint32_t) * event_size);
+    aios.sub_table = (uint32_t *)volc_osal_malloc(sizeof(uint32_t) * event_size);
     if (NULL == aios.sub_table) {
         printf("aios_init: sub_table create fail\n");
         return;
@@ -279,8 +282,8 @@ void aios_init(int event_size)
 
 void aios_deinit(void)
 {
-    hal_mutex_destroy(&aios.event_mutex);
-    hal_mutex_destroy(&aios.timer_mutex);
+    volc_osal_mutex_destroy(&aios.event_mutex);
+    volc_osal_mutex_destroy(&aios.timer_mutex);
     __interruptable_deinit();
 }
 
@@ -295,14 +298,14 @@ void aios_sub_init(uint32_t *flag_sub, aios_event_id_t topic_max)
 int64_t aios_evttimer(void)
 {
     int64_t system_time = aios_get_time();
-    hal_mutex_lock(aios.timer_mutex);
+    volc_osal_mutex_lock(aios.timer_mutex);
     if (aios.timer_heap.nelts == 0) {
-        hal_mutex_unlock(aios.timer_mutex);
+        volc_osal_mutex_unlock(aios.timer_mutex);
         return -1;
     }
     aios_timer_t* item = VOLC_CONTAINER_OF(heap_min(&aios.timer_heap), aios_timer_t, node);
     if (item->timeout_ms > system_time) {
-        hal_mutex_unlock(aios.timer_mutex);
+        volc_osal_mutex_unlock(aios.timer_mutex);
         return item->timeout_ms - system_time;
     }
     while (item->timeout_ms <= system_time) {
@@ -315,7 +318,7 @@ int64_t aios_evttimer(void)
         heap_insert(&aios.timer_heap, &item->node, __heap_node_less);
         item = VOLC_CONTAINER_OF(heap_min(&aios.timer_heap), aios_timer_t, node);
     }
-    hal_mutex_unlock(aios.timer_mutex);
+    volc_osal_mutex_unlock(aios.timer_mutex);
     return 0;
 }
 
@@ -368,11 +371,11 @@ int aios_once(void)
     }
 
     // 寻找当前Actor的最老的事件
-    hal_mutex_lock(aios.event_mutex);
+    volc_osal_mutex_lock(aios.event_mutex);
     aios_event_t * e = aios_event_get_block(priority);
     AIOS_ASSERT(e != NULL);
     
-    hal_mutex_unlock(aios.event_mutex);
+    volc_osal_mutex_unlock(aios.event_mutex);
 
     // 对事件进行执行
     if ((aios.sub_table[e->id] & (1 << session->priority)) != 0)
@@ -385,17 +388,17 @@ int aios_once(void)
         return (int)EosRunErr_ActorNotSub;
     }
     // 销毁过期事件与其携带的参数
-    hal_mutex_lock(aios.event_mutex);
+    volc_osal_mutex_lock(aios.event_mutex);
     aios_event_gc(e);
-    hal_mutex_unlock(aios.event_mutex);
+    volc_osal_mutex_unlock(aios.event_mutex);
 
-    hal_mutex_lock(aios.timer_mutex);
+    volc_osal_mutex_lock(aios.timer_mutex);
     if (aios.timer_heap.nelts == 0) {
-        hal_mutex_unlock(aios.timer_mutex);
+        volc_osal_mutex_unlock(aios.timer_mutex);
         // __interruptable_sleep(AIOS_MAX_SLEEP_MS);
     } else {
         aios_timer_t* item = VOLC_CONTAINER_OF(heap_min(&aios.timer_heap), aios_timer_t, node);
-        hal_mutex_unlock(aios.timer_mutex);
+        volc_osal_mutex_unlock(aios.timer_mutex);
         int sleep_ms = item->timeout_ms - aios_get_time();
         __interruptable_sleep(sleep_ms);
     }
@@ -521,7 +524,7 @@ int aios_event_pub(aios_event_id_t id, void *data, aios_event_free_handler free_
     }
 
     // 申请事件空间
-    aios_event_t *e = (aios_event_t *)hal_malloc(sizeof(aios_event_t));
+    aios_event_t *e = (aios_event_t *)volc_osal_malloc(sizeof(aios_event_t));
     if (e == NULL) {
         return EosRunErr_MallocFail;
     }
@@ -530,9 +533,9 @@ int aios_event_pub(aios_event_id_t id, void *data, aios_event_free_handler free_
     aios.sub_general |= e->sub;
     e->data = data;
     e->free_handler = free_handler;
-    hal_mutex_lock(aios.event_mutex);
+    volc_osal_mutex_lock(aios.event_mutex);
     volc_list_add_tail(&e->node, &aios.event_list);
-    hal_mutex_unlock(aios.event_mutex);
+    volc_osal_mutex_unlock(aios.event_mutex);
     __interruptable_break();
 
     return EosRun_OK;
@@ -550,15 +553,15 @@ void aios_event_unsub(aios_session_t * const me, aios_event_id_t id)
 
 void* aios_event_time_pub(aios_event_id_t id, uint32_t time_ms, uint32_t period_ms)
 {
-    aios_timer_t* item = (aios_timer_t *)hal_malloc(sizeof(aios_timer_t));
+    aios_timer_t* item = (aios_timer_t *)volc_osal_malloc(sizeof(aios_timer_t));
     AIOS_ASSERT(item != NULL);
     memset(item, 0, sizeof(aios_timer_t));
     item->id = id;
     item->timeout_ms =  aios_get_time() + time_ms;
     item->period_ms = period_ms;
-    hal_mutex_lock(aios.timer_mutex);
+    volc_osal_mutex_lock(aios.timer_mutex);
     heap_insert(&aios.timer_heap, &item->node, __heap_node_less);
-    hal_mutex_unlock(aios.timer_mutex);
+    volc_osal_mutex_unlock(aios.timer_mutex);
     return (void *)item;
 }
 
@@ -568,10 +571,10 @@ void aios_event_time_cancel(void** timer)
         return;
     }
     aios_timer_t* item = (aios_timer_t *)*timer;
-    hal_mutex_lock(aios.timer_mutex);
+    volc_osal_mutex_lock(aios.timer_mutex);
     heap_remove(&aios.timer_heap, &item->node, __heap_node_less);
-    hal_mutex_unlock(aios.timer_mutex);
-    hal_free(item);
+    volc_osal_mutex_unlock(aios.timer_mutex);
+    volc_osal_free(item);
     *timer = NULL;
 }
 
@@ -616,7 +619,7 @@ void aios_event_gc(void *data)
         if (e->free_handler != NULL) {
             e->free_handler(e->data);
         }
-        hal_free(e);
+        volc_osal_free(e);
     }
     aios.sub_general = 0;
     volc_list_for_each_entry(e, &aios.event_list, aios_event_t, node) {

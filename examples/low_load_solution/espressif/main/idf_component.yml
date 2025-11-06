@@ -17,4 +17,7 @@ dependencies:
   volc_conv_ai:
     path: ../../../../volc_conv_ai
     public: true
+  application:
+    path: ../../../../application
+    public: true
   espressif/button: =3.3.1

@@ -28,6 +28,6 @@ set(VOLC_CONV_AI_HIGH_QUALITY_INCS "${CMAKE_CURRENT_LIST_DIR}/../src/transports/
                                     "${CMAKE_CURRENT_LIST_DIR}/../src/transports/high_quality/third_party/volc_rtc_engine_lite/inc"
                         CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 high quality solution include dir")
 
-set(VOLC_CONV_AI_PLATFORM_INCS "${CMAKE_CURRENT_LIST_DIR}/../platforms/inc"
+set(VOLC_CONV_AI_PLATFORM_INCS "${CMAKE_CURRENT_LIST_DIR}/../osal/inc"
                         CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 platform include dir")
 

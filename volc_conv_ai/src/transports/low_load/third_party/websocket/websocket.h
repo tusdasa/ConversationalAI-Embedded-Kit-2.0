@@ -11,7 +11,7 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "tls_client.h"
 #define CONFIG_WEBSOCKET_TLS
 
@@ -103,8 +103,8 @@ typedef struct {
 #endif
     void* user_context;
     volc_ws_event_handler_t ws_event_handler;
-    hal_mutex_t mutex;
-    hal_tid_t tid;
+    volc_osal_mutex_t mutex;
+    volc_osal_tid_t tid;
     ws_stats_t stats;
 } volc_ws_client_t;
 

@@ -5,7 +5,7 @@
 #include "iot_display.h"
 
 #include "common_def.h"
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include <stdio.h>
 
 /* data structure ----------------------------------------------------------- */
@@ -13,7 +13,7 @@ typedef struct aios_Ai_Conversation_app_tag {
     aios_session_t super;
     bool status;
     void* timer;
-    hal_tid_t conv_thread_id;
+    volc_osal_tid_t conv_thread_id;
 } aios_Ai_Conversation_app_t;
 
 aios_Ai_Conversation_app_t Ai_Conversation_app;
@@ -45,13 +45,13 @@ static aios_ret_t state_conversation(aios_Ai_Conversation_app_t * const me, aios
         case Event_Ai_Conversation_Start:
             // printf("state_conversation Event_Ai_Conversation_Start\n");
             if(me->conv_thread_id == NULL){
-                hal_thread_param_t param = {0};
+                volc_osal_thread_param_t param = {0};
                 iot_display_string("ai对话启动中");
                 snprintf(param.name, sizeof(param.name), "%s", "conv_ai");
                 param.stack_size = 8*1024;
                 param.priority = 5;
-                // printf("hal_thread_create  conv_ai_task %d \n",__LINE__);
-                hal_thread_create(&me->conv_thread_id,&param,conv_ai_task,NULL);
+                // printf("volc_osal_thread_create  conv_ai_task %d \n",__LINE__);
+                volc_osal_thread_create(&me->conv_thread_id,&param,conv_ai_task,NULL);
             }
             return AIOS_Ret_Handled;
         case Event_Ai_Conversation_Interrupt:

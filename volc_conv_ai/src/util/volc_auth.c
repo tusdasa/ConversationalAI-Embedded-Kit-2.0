@@ -14,7 +14,7 @@
 #include <mbedtls/md5.h>
 #include <mbedtls/base64.h>
 
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "util/volc_base64.h"
 #include "util/volc_list.h"
 #include "util/volc_log.h"
@@ -76,7 +76,7 @@ char* volc_aes_decode(const char* secret, const char* input, const bool partial_
 
     if (partial_secret) {
         // If partial secret is used, we only use the first 8 bytes of the key and iv
-        key = (char *)hal_calloc(AES_KEY_SIZE, 1);
+        key = (char *)volc_osal_calloc(AES_KEY_SIZE, 1);
         memcpy(key, secret, AES_KEY_SIZE);
         key_bits = 128; // AES-128
     } else {
@@ -85,13 +85,13 @@ char* volc_aes_decode(const char* secret, const char* input, const bool partial_
             LOGE("Secret length is less than 24, secret: %s", secret);
             return NULL;
         }
-        key = (char *)hal_calloc(AES_KEY_SIZE_24, 1); // +1 for null terminator
+        key = (char *)volc_osal_calloc(AES_KEY_SIZE_24, 1); // +1 for null terminator
         memcpy(key, secret, AES_KEY_SIZE_24);
         key_bits = 192; // AES-192
     }
 
     decoded_len = volc_base64_decoded_length((const uint8_t*)input, strlen(input));
-    decoded_payload = (unsigned char *)hal_calloc(decoded_len + 1, 1);
+    decoded_payload = (unsigned char *)volc_osal_calloc(decoded_len + 1, 1);
     if (!decoded_payload) {
         LOGE("Failed to allocate memory for decoded payload");
         return NULL;
@@ -99,7 +99,7 @@ char* volc_aes_decode(const char* secret, const char* input, const bool partial_
     volc_base64_decode((unsigned char *)decoded_payload, decoded_len, &decoded_len, (const unsigned char *)input, strlen(input));
     LOGV("decoded payload: %s, len: %zu", decoded_payload, decoded_len);
 
-    uint8_t *output = hal_calloc(decoded_len + 16, 1); // +1 for null terminator
+    uint8_t *output = volc_osal_calloc(decoded_len + 16, 1); // +1 for null terminator
 
     memcpy(iv, secret, AES_KEY_SIZE); // Use the same secret for IV
     __aes_cbc(false, (const unsigned char *)key, (unsigned char *)iv, (const unsigned char *)decoded_payload, decoded_len, key_bits, output);

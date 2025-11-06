@@ -3,7 +3,7 @@
 
 #include "volc_ws.h"
 
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "base/volc_base.h"
 #include "util/volc_list.h"
 #include "util/volc_log.h"
@@ -69,9 +69,9 @@ static bool __ws_wait_for_session_update(ws_impl_t* ws) {
 static int __build_ws_message(const char* msg, uint8_t** out_buf, size_t* out_len) {
     size_t msg_len = strlen(msg) + 1;
     *out_len = msg_len - 1;
-    *out_buf = (uint8_t*)hal_malloc(msg_len);
+    *out_buf = (uint8_t*)volc_osal_malloc(msg_len);
     if (!*out_buf) {
-        LOGE("hal_malloc failed");
+        LOGE("volc_osal_malloc failed");
         return -1;
     }
     memcpy(*out_buf, msg, msg_len);
@@ -96,7 +96,7 @@ static bool __ws_drop_for_interrupted(ws_impl_t* ws, const char* p_response_id) 
     if (ws->b_interrupted && p_response_id) {
         ws->b_interrupted = false;
         if (ws->p_last_response_id) {
-            hal_free(ws->p_last_response_id);
+            volc_osal_free(ws->p_last_response_id);
             ws->p_last_response_id = NULL;
         }
         ws->p_last_response_id = strdup(p_response_id);
@@ -146,7 +146,7 @@ static void __ws_recv_data(ws_impl_t* ws, const char* data, int data_len)
             goto err_out_label;
         }
         len = volc_base64_decoded_length((const uint8_t*)p_delta, strlen(p_delta));
-        p_data = hal_malloc(len + 1);
+        p_data = volc_osal_malloc(len + 1);
         if (NULL == p_data) {
             LOGE("Failed to alloc memory");
             goto err_out_label;
@@ -274,7 +274,7 @@ static void __ws_append_data(ws_impl_t* ws, volc_ws_event_data_t* data) {
         if (new_capacity > ws->assembler.capacity) {
             LOGI("append data, new_capacity: %d", new_capacity);
             new_capacity = new_capacity < 1024 ? 1024 : new_capacity * 2;
-            new_buffer = hal_realloc(ws->assembler.buffer, new_capacity);
+            new_buffer = volc_osal_realloc(ws->assembler.buffer, new_capacity);
             if (new_buffer == NULL) {
                 LOGE("Failed to alloc memory");
                 __ws_assembler_free(&ws->assembler);
@@ -341,7 +341,7 @@ static int __ws_send_message(ws_impl_t* ws, const void* data_ptr, size_t data_le
 
 static int __ws_start(ws_impl_t* ws, volc_iot_info_t* iot_info)
 {
-    uint64_t current_time = hal_get_time_ms();
+    uint64_t current_time = volc_osal_get_time_ms();
     bool b_wait_for_session_update = __ws_wait_for_session_update(ws);
     int random_num = (int)current_time;//volc_get_random_num();
     char time_str[32] = { 0 };
@@ -353,7 +353,7 @@ static int __ws_start(ws_impl_t* ws, volc_iot_info_t* iot_info)
         return -1;
     }
 
-    hal_get_platform_info(platform_info, sizeof(platform_info));
+    volc_osal_get_platform_info(platform_info, sizeof(platform_info));
     snprintf(user_agent, sizeof(user_agent), "%s(%s)", volc_get_version(), platform_info);
     snprintf(time_str, sizeof(time_str), "%llu", current_time);
     snprintf(num_str, sizeof(num_str), "%d", random_num);
@@ -384,12 +384,12 @@ static int __ws_start(ws_impl_t* ws, volc_iot_info_t* iot_info)
     if (b_wait_for_session_update) {
         // wait for session.update
         while (!ws->b_connected) {
-            hal_thread_sleep(10);
+            volc_osal_thread_sleep(10);
         }
         char* session_update = __ws_generate_session_update(ws);
         if (session_update) {
             __ws_send_message(ws, session_update, strlen(session_update));
-            hal_free(session_update);
+            volc_osal_free(session_update);
         }
     }
     ws->b_pipeline_started = true;
@@ -491,7 +491,7 @@ static int __ws_send_audio(ws_impl_t* ws, const void* data_ptr, size_t data_len,
     len = volc_base64_encoded_length(data_len);
     if (ws->data_buf_size < len) {
         HAL_SAFE_FREE(ws->p_data_buf);
-        ws->p_data_buf = (char*)hal_malloc(len);
+        ws->p_data_buf = (char*)volc_osal_malloc(len);
         if (!ws->p_data_buf) {
             LOGE("failed to malloc data buf");
             ws->data_buf_size = 0;
@@ -536,7 +536,7 @@ static void __ws_parse_params(const char* params, ws_params_t* out_params) {
 }
 
 volc_ws_t volc_ws_create(void* context, cJSON* p_config, volc_msg_cb message_callback, volc_data_cb data_callback) {
-    ws_impl_t* ws = (ws_impl_t*)hal_calloc(1, sizeof(ws_impl_t));
+    ws_impl_t* ws = (ws_impl_t*)volc_osal_calloc(1, sizeof(ws_impl_t));
     if (!ws) {
         LOGE("volc_ws_create: malloc ws failed");
         return NULL;
@@ -547,7 +547,7 @@ volc_ws_t volc_ws_create(void* context, cJSON* p_config, volc_msg_cb message_cal
     ws->conv_status = VOLC_CONV_STATUS_ANSWER_FINISH;
     ws->params.audio_codec_type = VOLC_AUDIO_CODEC_TYPE_PCM;
 
-    hal_get_uuid(ws->hardware_id, sizeof(ws->hardware_id));
+    volc_osal_get_uuid(ws->hardware_id, sizeof(ws->hardware_id));
 
     if (__ws_init(ws, p_config) != 0) {
         HAL_SAFE_FREE(ws);

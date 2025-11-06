@@ -5,7 +5,7 @@
 
 #include <string.h>
 #include <inttypes.h>
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "util/volc_json.h"
 #include "util/volc_log.h"
 #include "base/volc_device_manager.h"
@@ -125,7 +125,7 @@ static void __record_media_bytes(media_stats_t* stats, size_t len, const char* t
 #if defined(ENABLE_WS_MODE)
     uint64_t now_ms = 0;
     stats->bytes += len;
-    now_ms = hal_get_time_ms();
+    now_ms = volc_osal_get_time_ms();
     if (stats->last_time_ms == 0) {
         stats->last_time_ms = now_ms;
     }
@@ -222,7 +222,7 @@ int volc_create(volc_engine_t* handle, const char* config_json, volc_event_handl
         return VOLC_ERR_FAILED;
     }
 
-    engine = (volc_engine_impl_t*)hal_malloc(sizeof(volc_engine_impl_t));
+    engine = (volc_engine_impl_t*)volc_osal_malloc(sizeof(volc_engine_impl_t));
     if (engine == NULL) {
         LOGE("Failed to allocate memory for engine");
         return VOLC_ERR_FAILED;
@@ -273,7 +273,7 @@ int volc_create(volc_engine_t* handle, const char* config_json, volc_event_handl
     engine->status = VOLC_RT_STATE_CREATED;
     *handle = (volc_engine_t)engine;
     cJSON_Delete(config);
-    LOGI("Engine created successfully at: %llu ms", hal_get_time_ms());
+    LOGI("Engine created successfully at: %llu ms", volc_osal_get_time_ms());
     return 0;
 err_out_label:
     _iot_info_free(&engine->info);
@@ -565,7 +565,7 @@ int volc_interrupt(volc_engine_t handle) {
         LOGE("engine handle is NULL");
         return -1;
     }
-    LOGI("interrupt: %d, at: %" PRIu64"ms", engine->mode, hal_get_time_ms());
+    LOGI("interrupt: %d, at: %" PRIu64"ms", engine->mode, volc_osal_get_time_ms());
     switch (engine->mode) {
         case VOLC_MODE_RTC:
 #if defined(ENABLE_RTC_MODE)

@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "cJSON.h"
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "util/volc_http.h"
 #include "util/volc_json.h"
 #include "util/volc_base64.h"
@@ -37,7 +37,7 @@ char* volc_generate_signature(const char* secret_key, const char* product_key, c
     snprintf(input_str, sizeof(input_str), "auth_type=%d&device_name=%s&random_num=%d&product_key=%s&timestamp=%" PRIu64, auth_type, device_name, rnd, product_key, timestamp);
     volc_sha256_hmac((const unsigned char*)secret_key, strlen(secret_key), (const unsigned char*)input_str, strlen(input_str), hmac_result, &hmac_result_len);
     base64_encoded_len = volc_base64_encoded_length(hmac_result_len);
-    unsigned char* base64_encoded = (unsigned char*)hal_malloc(base64_encoded_len);
+    unsigned char* base64_encoded = (unsigned char*)volc_osal_malloc(base64_encoded_len);
     if (!base64_encoded) {
         LOGE("Failed to allocate memory for base64 encoded string");
         return NULL;
@@ -57,7 +57,7 @@ char* volc_generate_signature_ws(const char* secret_key, const char* product_key
     snprintf(input_str, sizeof(input_str), "auth_type=%d&device_name=%s&random_num=%d&product_key=%s&timestamp=%" PRIu64 "&instance_id=%s", auth_type, device_name, rnd, product_key, timestamp, instance_id);
     volc_sha256_hmac((const unsigned char*)secret_key, strlen(secret_key), (const unsigned char*)input_str, strlen(input_str), hmac_result, &hmac_result_len);
     base64_encoded_len = volc_base64_encoded_length(hmac_result_len);
-    unsigned char* base64_encoded = (unsigned char*)hal_malloc(base64_encoded_len);
+    unsigned char* base64_encoded = (unsigned char*)volc_osal_malloc(base64_encoded_len);
     if (!base64_encoded) {
         LOGE("Failed to allocate memory for base64 encoded string");
         return NULL;
@@ -81,7 +81,7 @@ volc_error_code_e volc_inter_err_2_ext_err(int code) {
 int volc_device_register(volc_iot_info_t* info, char** output)
 {
     int ret = 0;
-    uint64_t current_time = hal_get_time_ms();
+    uint64_t current_time = volc_osal_get_time_ms();
     int32_t random_num = (int32_t)current_time;
     char url[256] = {0};
     char* payload = NULL;
@@ -151,7 +151,7 @@ err_out_label:
 #define VOLC_API_ACTION_GET_RTC_CONFIG  "Action=GetRTCConfig"
 int volc_get_rtc_config(volc_iot_info_t* info, int audio_codec, const char* bot_id, const char* task_id, volc_room_info_t* room_info) {
     int ret = 0;
-    uint64_t current_time = hal_get_time_ms();
+    uint64_t current_time = volc_osal_get_time_ms();
     int32_t random_num = (int32_t)current_time;
     char url[256] = {0};
     char* signature = volc_generate_signature(info->device_secret, info->product_key, info->device_name, random_num, current_time, 0);

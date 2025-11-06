@@ -1,7 +1,7 @@
 #include "volc_conv_ai.h"
 #include "audio_player.h"
 #include "audio_capture.h"
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "iot_local_function_list.h"
 #include <stdio.h>
 #include <string.h>
@@ -334,7 +334,7 @@ void conv_ai_task(void *pvParameters)
     }
     // int read_size = recorder_pipeline_get_default_read_size(pipeline);
     int read_size = 320;
-    uint8_t *audio_buffer = hal_malloc(read_size);
+    uint8_t *audio_buffer = volc_osal_malloc(read_size);
     if (!audio_buffer)
     {
         printf("Failed to alloc audio buffer!");
@@ -365,5 +365,5 @@ void conv_ai_task(void *pvParameters)
     // memset(&engine_ctx,0,sizeof(engine_context_t));
     is_ready = false;
     is_interrupt =  false;
-    hal_thread_exit(NULL);
+    volc_osal_thread_exit(NULL);
 }

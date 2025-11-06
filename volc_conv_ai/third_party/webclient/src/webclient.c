@@ -31,7 +31,7 @@
 
 #include "util/volc_list.h"
 #include "util/volc_log.h"
-#include "volc_platform.h"
+#include "volc_osal.h"
 
 #define TAG "webclient"
 
@@ -226,7 +226,7 @@ static int webclient_resolve_address(struct webclient_session *session, struct a
 
   /* get host address ok. */
   {
-    char *host_addr_new = hal_malloc(host_addr_len + 1);
+    char *host_addr_new = volc_osal_malloc(host_addr_len + 1);
 
     if (!host_addr_new) {
       rc = -WEBCLIENT_ERROR;
@@ -285,13 +285,13 @@ static int webclient_open_tls(struct webclient_session *session, const char *URI
 
   RT_ASSERT(session);
 
-  session->tls_session = (MbedTLSSession *)hal_calloc(1, sizeof(MbedTLSSession));
+  session->tls_session = (MbedTLSSession *)volc_osal_calloc(1, sizeof(MbedTLSSession));
   if (session->tls_session == RT_NULL) {
     return -WEBCLIENT_NOMEM;
   }
 
   session->tls_session->buffer_len = WEBCLIENT_RESPONSE_BUFSZ;
-  session->tls_session->buffer = hal_malloc(session->tls_session->buffer_len);
+  session->tls_session->buffer = volc_osal_malloc(session->tls_session->buffer_len);
   if (session->tls_session->buffer == RT_NULL) {
     LOGE( "no memory for tls_session buffer!");
     return -WEBCLIENT_ERROR;
@@ -743,7 +743,7 @@ struct webclient_session *webclient_session_create(size_t header_sz, const char 
   struct webclient_session *session = RT_NULL;
 
   /* create session */
-  session = (struct webclient_session *)hal_calloc(1, sizeof(struct webclient_session));
+  session = (struct webclient_session *)volc_osal_calloc(1, sizeof(struct webclient_session));
   assert(session);
 
 #ifdef CONFIG_WEBCLIENT_HTTPS_SUPPORTED
@@ -754,7 +754,7 @@ struct webclient_session *webclient_session_create(size_t header_sz, const char 
   }
 
   LOGD( "Certificate Length: %d\n%s", (int)cert_len, cert_buf ? cert_buf : "NULL");
-  session->cert_buf = (char *)hal_calloc(cert_len, 1);
+  session->cert_buf = (char *)volc_osal_calloc(cert_len, 1);
   assert(session->cert_buf);
   memcpy(session->cert_buf, cert_buf, cert_len);
   session->cert_len = cert_len;
@@ -764,11 +764,11 @@ struct webclient_session *webclient_session_create(size_t header_sz, const char 
   session->socket = -1;
   session->content_length = -1;
 
-  session->header = (struct webclient_header *)hal_calloc(1, sizeof(struct webclient_header));
+  session->header = (struct webclient_header *)volc_osal_calloc(1, sizeof(struct webclient_header));
   assert(session->header);
 
   session->header->size = header_sz;
-  session->header->buffer = (char *)hal_calloc(1, header_sz);
+  session->header->buffer = (char *)volc_osal_calloc(1, header_sz);
   assert(session->header->buffer);
 
   return session;
@@ -1388,7 +1388,7 @@ int webclient_response(struct webclient_session *session, void **response, size_
       unsigned char *new_resp = RT_NULL;
 
       result_sz = total_read + WEBCLIENT_RESPONSE_BUFSZ;
-      new_resp = hal_realloc(response_buf, result_sz + 1);
+      new_resp = volc_osal_realloc(response_buf, result_sz + 1);
       if (new_resp == RT_NULL) {
         LOGE( "no memory for realloc new response buffer!");
         break;
@@ -1408,7 +1408,7 @@ int webclient_response(struct webclient_session *session, void **response, size_
     int result_sz;
 
     result_sz = session->content_length;
-    response_buf = hal_calloc(1, result_sz + 1);
+    response_buf = volc_osal_calloc(1, result_sz + 1);
     if (response_buf == RT_NULL) {
       return -WEBCLIENT_NOMEM;
     }
@@ -1456,7 +1456,7 @@ int webclient_request_header_add(char **request_header, const char *fmt, ...)
   RT_ASSERT(request_header);
 
   if (*request_header == RT_NULL) {
-    header = hal_calloc(1, WEBCLIENT_HEADER_BUFSZ);
+    header = volc_osal_calloc(1, WEBCLIENT_HEADER_BUFSZ);
     if (header == RT_NULL) {
       LOGE( "No memory for webclient request header add.");
       // return RT_NULL;

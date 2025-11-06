@@ -1,3 +1,6 @@
+// Copyright (2025) Beijing Volcano Engine Technology Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 #ifndef AIOS_H_
 #define AIOS_H_
 

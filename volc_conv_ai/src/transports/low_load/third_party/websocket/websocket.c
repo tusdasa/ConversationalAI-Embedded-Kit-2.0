@@ -27,7 +27,7 @@
 #include <inttypes.h>
 #include <sys/select.h>
 
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "util/volc_list.h"
 #include "util/volc_log.h"
 #include "util/volc_base64.h"
@@ -375,7 +375,7 @@ static int ws_write(volc_ws_client_t* client, int opcode, int mask_flag, const c
 
     if (mask_flag) {
         mask = &ws_header[header_len];
-        hal_fill_random((uint8_t *)ws_header + header_len, 4);
+        volc_osal_fill_random((uint8_t *)ws_header + header_len, 4);
         header_len += 4;
 
         for (i = 0; i < len; ++i) {
@@ -616,13 +616,13 @@ static int _ssl_init(volc_ws_client_t* client) {
         LOGE("invalid input args");
         return -1;
     }
-    client->ssl = hal_calloc(1, sizeof(MbedTLSSession));
+    client->ssl = volc_osal_calloc(1, sizeof(MbedTLSSession));
     if (NULL == client->ssl) {
         LOGE("malloc ssl failed");
         goto _websocket_init_fail;
     }
     client->ssl->buffer_len = WEBSOCKET_BUFFER_SIZE_BYTE;
-    client->ssl->buffer = hal_malloc(client->ssl->buffer_len);
+    client->ssl->buffer = volc_osal_malloc(client->ssl->buffer_len);
     if (NULL == client->ssl->buffer) {
         LOGE("malloc ssl buffer fail");
         goto _websocket_init_fail;
@@ -766,7 +766,7 @@ static int ws_disconnect(volc_ws_client_t* client)
     }
     ws_tcp_close(client);
     if (client->auto_reconnect) {
-        client->reconnect_tick_ms = hal_get_time_ms();
+        client->reconnect_tick_ms = volc_osal_get_time_ms();
     }
     client->state = VOLC_WS_STATE_WAIT_TIMEOUT;
     volc_ws_client_dispatch_event(client, VOLC_WS_EVENT_DISCONNECTED, NULL, 0, -1);
@@ -781,7 +781,7 @@ static int ws_connect(volc_ws_client_t* client, const char* host, int port, int 
         return -1;
     }
     unsigned char random_key[16];
-    hal_fill_random(random_key, sizeof(random_key));
+    volc_osal_fill_random(random_key, sizeof(random_key));
 
     unsigned char client_key[28] = {0};
 
@@ -1008,7 +1008,7 @@ static int volc_ws_client_send_with_opcode(volc_ws_client_t* client, volc_ws_opc
         return -1;
     }
 
-    hal_mutex_lock(client->mutex);
+    volc_osal_mutex_lock(client->mutex);
 
     uint32_t current_opcode = opcode;
     while (widx < len || current_opcode) {
@@ -1035,7 +1035,7 @@ static int volc_ws_client_send_with_opcode(volc_ws_client_t* client, volc_ws_opc
 
 unlock_and_return:
     if (client->mutex)
-        hal_mutex_unlock(client->mutex);
+        volc_osal_mutex_unlock(client->mutex);
     else
         LOGE("mutex already deinit\r\n");
     return ret;
@@ -1079,7 +1079,7 @@ static int __parse_url(volc_ws_client_t* client, char* url) {
 	filed_end = strstr(pos, "://");
 	if (filed_end) {
 		len = filed_end - pos;
-		client->scheme = (char *)hal_malloc(len + 1);
+		client->scheme = (char *)volc_osal_malloc(len + 1);
 		if (NULL == client->scheme) {
 			LOGE("malloc scheme memory failed");
 			return -1;
@@ -1116,7 +1116,7 @@ static int __parse_url(volc_ws_client_t* client, char* url) {
     }
 
 	len = filed_end - pos;
-	client->host = (char *)hal_malloc(len + 1);
+	client->host = (char *)volc_osal_malloc(len + 1);
 	if (NULL == client->host) {
 		LOGE("malloc host memory failed");
 		return -1;
@@ -1150,7 +1150,7 @@ static int __parse_url(volc_ws_client_t* client, char* url) {
 	// 4. parse path
 	if (*pos == '/') {
 		len = url_end - pos;
-		client->path = (char *)hal_malloc(len + 1);
+		client->path = (char *)volc_osal_malloc(len + 1);
 		if (NULL == client->path) {
 			LOGE("malloc path memory failed");
 			return -1;
@@ -1173,7 +1173,7 @@ volc_ws_client_t* volc_ws_client_init(const volc_ws_config_t* input)
 {
     int tls_ret = 0;
     const char* pers = "websocket";
-    volc_ws_client_t* client = (volc_ws_client_t*) hal_malloc(sizeof(volc_ws_client_t));
+    volc_ws_client_t* client = (volc_ws_client_t*) volc_osal_malloc(sizeof(volc_ws_client_t));
     memset(client, 0, sizeof(volc_ws_client_t));
     // parse websocket uri to websocket config
     if (input->uri) {
@@ -1207,10 +1207,10 @@ volc_ws_client_t* volc_ws_client_init(const volc_ws_config_t* input)
     client->auto_reconnect = true;
 
     // init lock
-    client->mutex = hal_mutex_create();
+    client->mutex = volc_osal_mutex_create();
 
     // set ws_transport
-    client->ws_transport = (transport_ws_t*) hal_malloc(sizeof(transport_ws_t));
+    client->ws_transport = (transport_ws_t*) volc_osal_malloc(sizeof(transport_ws_t));
     memset(client->ws_transport, 0, sizeof(transport_ws_t));
     if (!client->ws_transport) {
         LOGE("alloc ws_transport fail\r\n");
@@ -1224,7 +1224,7 @@ volc_ws_client_t* volc_ws_client_init(const volc_ws_config_t* input)
         HAL_SAFE_FREE(client->ws_transport->path);
         client->ws_transport->path = strdup("/");
     }
-    client->ws_transport->buffer = hal_malloc(WS_BUFFER_SIZE);
+    client->ws_transport->buffer = volc_osal_malloc(WS_BUFFER_SIZE);
     if (!client->ws_transport->buffer) {
         LOGE("alloc ws_transport buffer fail\r\n");
         goto _websocket_init_fail;
@@ -1245,8 +1245,8 @@ volc_ws_client_t* volc_ws_client_init(const volc_ws_config_t* input)
     client->ws_transport->frame_state.bytes_remaining = 0;
 
     // tick...
-    client->reconnect_tick_ms = hal_get_time_ms();
-    client->ping_tick_ms = hal_get_time_ms();
+    client->reconnect_tick_ms = volc_osal_get_time_ms();
+    client->ping_tick_ms = volc_osal_get_time_ms();
     client->wait_for_pong_resp = false;
 
     // rx retry
@@ -1261,12 +1261,12 @@ volc_ws_client_t* volc_ws_client_init(const volc_ws_config_t* input)
         buffer_size = WEBSOCKET_BUFFER_SIZE_BYTE;
     }
     client->buffer_size = buffer_size;
-    if (NULL == (client->rx_buffer = (char*) hal_malloc(buffer_size))) {
+    if (NULL == (client->rx_buffer = (char*) volc_osal_malloc(buffer_size))) {
         LOGE("alloc rx_buffer fail\r\n");
         goto _websocket_init_fail;
     }
 
-    if (NULL == (client->tx_buffer = (char*) hal_malloc(buffer_size))) {
+    if (NULL == (client->tx_buffer = (char*) volc_osal_malloc(buffer_size))) {
         LOGE("alloc tx_buffer fail\r\n");
         goto _websocket_init_fail;
     }
@@ -1314,7 +1314,7 @@ static void free_client(volc_ws_client_t* client)
     if (client == NULL)
         return;
 
-    hal_mutex_destroy(client->mutex);
+    volc_osal_mutex_destroy(client->mutex);
     client->mutex = NULL;
     client->ws_event_handler = NULL;
 
@@ -1358,21 +1358,21 @@ void volc_ws_client_task(void* thread_param)
                 volc_ws_client_dispatch_event(client, VOLC_WS_EVENT_CONNECTED, NULL, 0, -1);
                 break;
             case VOLC_WS_STATE_CONNECTED:
-                LOGD("%s, status:%02x %llu %llu\r\n", __func__, status_bits, hal_get_time_ms(), client->ping_tick_ms);
-                if (hal_get_time_ms() - client->ping_tick_ms > WEBSOCKET_PING_INTERVAL_SEC * 1000) {
-                    client->ping_tick_ms = hal_get_time_ms();
+                LOGD("%s, status:%02x %llu %llu\r\n", __func__, status_bits, volc_osal_get_time_ms(), client->ping_tick_ms);
+                if (volc_osal_get_time_ms() - client->ping_tick_ms > WEBSOCKET_PING_INTERVAL_SEC * 1000) {
+                    client->ping_tick_ms = volc_osal_get_time_ms();
 
                     if (status_bits & PING_SENT_BIT) {
-                        hal_mutex_lock(client->mutex);
+                        volc_osal_mutex_lock(client->mutex);
                         ws_write(client, VOLC_WS_OPCODES_PING | VOLC_WS_OPCODES_FIN, WS_MASK, NULL, 0, WEBSOCKET_NETWORK_TIMEOUT_MS);
-                        hal_mutex_unlock(client->mutex);
+                        volc_osal_mutex_unlock(client->mutex);
                     }
                     if (!client->wait_for_pong_resp) {
-                        client->pingpong_tick_ms = hal_get_time_ms();
+                        client->pingpong_tick_ms = volc_osal_get_time_ms();
                         client->wait_for_pong_resp = true;
                     }
                 }
-                if (hal_get_time_ms() - client->pingpong_tick_ms > WEBSOCKET_PINGPONG_TIMEOUT_SEC * 1000) {
+                if (volc_osal_get_time_ms() - client->pingpong_tick_ms > WEBSOCKET_PINGPONG_TIMEOUT_SEC * 1000) {
                     if (client->wait_for_pong_resp) {
                         LOGW("Error, no PONG received for more than %" PRIu64 " seconds after PING\r\n", client->pingpong_tick_ms);
                         break;
@@ -1383,15 +1383,15 @@ void volc_ws_client_task(void* thread_param)
                     LOGD("Read poll timeout: skipping read()...");
                     break;
                 }
-                // client->ping_tick_ms = hal_get_time_ms();
-                hal_mutex_lock(client->mutex);
+                // client->ping_tick_ms = volc_osal_get_time_ms();
+                volc_osal_mutex_lock(client->mutex);
                 if (ws_client_recv(client) == -1) {
                     LOGE("Error receive data");
                     ws_disconnect(client);
-                    hal_mutex_unlock(client->mutex);
+                    volc_osal_mutex_unlock(client->mutex);
                     break;
                 }
-                hal_mutex_unlock(client->mutex);
+                volc_osal_mutex_unlock(client->mutex);
                 break;
 
             case VOLC_WS_STATE_WAIT_TIMEOUT:
@@ -1399,9 +1399,9 @@ void volc_ws_client_task(void* thread_param)
                     client->run = false;
                     break;
                 }
-                if (hal_get_time_ms() - client->reconnect_tick_ms > WEBSOCKET_RECONNECT_TIMEOUT_MS) {
+                if (volc_osal_get_time_ms() - client->reconnect_tick_ms > WEBSOCKET_RECONNECT_TIMEOUT_MS) {
                     client->state = VOLC_WS_STATE_INIT;
-                    client->reconnect_tick_ms = hal_get_time_ms();
+                    client->reconnect_tick_ms = volc_osal_get_time_ms();
                     LOGE("Reconnecting...");
                 }
                 break;
@@ -1422,7 +1422,7 @@ void volc_ws_client_task(void* thread_param)
             }
         } else if (VOLC_WS_STATE_WAIT_TIMEOUT == client->state) {
             if (client->auto_reconnect)
-                hal_thread_sleep(WEBSOCKET_RECONNECT_TIMEOUT_MS);
+                volc_osal_thread_sleep(WEBSOCKET_RECONNECT_TIMEOUT_MS);
         } else if (VOLC_WS_STATE_CLOSING == client->state) {
             LOGW(" Waiting for TCP connection to be closed by the server");
             int ret = ws_poll_connection_closed(&(client->sockfd), 1000);
@@ -1440,19 +1440,19 @@ void volc_ws_client_task(void* thread_param)
         }
     }
     LOGW("close connection...");
-    hal_mutex_lock(client->mutex);
+    volc_osal_mutex_lock(client->mutex);
     ws_tcp_close(client);
-    hal_mutex_unlock(client->mutex);
+    volc_osal_mutex_unlock(client->mutex);
     client->state = VOLC_WS_STATE_UNKNOW;
 
     if (volc_ws_client_destory_config(client)) {
-        LOGE("client config already hal_free");
+        LOGE("client config already volc_osal_free");
     }
     if (client->tid) {
-        hal_thread_destroy(client->tid);
+        volc_osal_thread_destroy(client->tid);
     }
     client->exit = true;
-    hal_thread_exit(NULL);
+    volc_osal_thread_exit(NULL);
 #if defined(PLATFORM_MACOS)
     return NULL;
 #else
@@ -1472,11 +1472,11 @@ int volc_ws_client_start(volc_ws_client_t* client)
         LOGE("The client has started");
         return -1;
     }
-    hal_thread_param_t param = {0};
+    volc_osal_thread_param_t param = {0};
     snprintf(param.name, sizeof(param.name), "%s", "websocket");
     param.stack_size = WEBSOCKET_TASK_STACK;
     param.priority = WEBSOCKET_TASK_PRIORITY;
-    ret = hal_thread_create(&client->tid, &param, volc_ws_client_task, (void*) client);
+    ret = volc_osal_thread_create(&client->tid, &param, volc_ws_client_task, (void*) client);
     if (ret != 0) {
         LOGE("create volc_ws_client_task fail");
         return -1;
@@ -1499,7 +1499,7 @@ int volc_ws_client_stop(volc_ws_client_t* client)
     client->state = VOLC_WS_STATE_UNKNOW;
     while(!client->exit) {
         LOGI("wait client exit...");
-        hal_thread_sleep(10);
+        volc_osal_thread_sleep(10);
     }
     free_client(client);
     client = NULL;

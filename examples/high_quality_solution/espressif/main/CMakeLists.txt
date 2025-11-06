@@ -1,7 +1,7 @@
 # Copyright (2025) Beijing Volcano Engine Technology Ltd.
 # SPDX-License-Identifier: Apache License 2.0
 
-include("../../../../framework/CMakeLists.txt")
+# include("../../../../application/framework/CMakeLists.txt")
 
 file(GLOB  APP_SRC  "./echoear_app/*.c")
 

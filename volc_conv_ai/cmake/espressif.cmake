@@ -6,11 +6,11 @@
 
 # Source files
 set(VOLC_SRCS ${VOLC_CONV_AI_SRCS}
-            "${CMAKE_CURRENT_LIST_DIR}/../platforms/src/espressif/volc_platform.c"
+            "${CMAKE_CURRENT_LIST_DIR}/../osal/src/espressif/volc_osal.c"
 )
 
 set(VOLC_INCS ${VOLC_CONV_AI_INCS}
-            "${CMAKE_CURRENT_LIST_DIR}/../platforms/inc"
+            "${CMAKE_CURRENT_LIST_DIR}/../osal/inc"
 )
 
 if(CONFIG_VOLC_RTC_MODE)

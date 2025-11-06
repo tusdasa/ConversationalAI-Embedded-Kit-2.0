@@ -29,7 +29,7 @@
 #include "tls_certificate.h"
 #include "tls_client.h"
 
-#include "volc_platform.h"
+#include "volc_osal.h"
 #include "util/volc_list.h"
 #include "util/volc_log.h"
 
