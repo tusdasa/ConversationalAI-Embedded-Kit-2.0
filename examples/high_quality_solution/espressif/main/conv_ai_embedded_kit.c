@@ -15,6 +15,7 @@
 #include "echoear_app/audio_vol.h"
 
 #include "echoear_app/button_event.h"
+#include "iot_button.h"
 
 #include "esp_event.h"
 #include "esp_log.h"
@@ -204,7 +205,27 @@ static esp_err_t rec_engine_cb(audio_rec_evt_t *event, void *user_data)
     return ESP_OK;
 }
 
-void  hal_level_init(){
+static void wifi_ap_event_cb(void *arg, void *data)
+{
+    button_event_t btn_evt = iot_button_get_event(arg);
+    if (btn_evt == BUTTON_LONG_PRESS_HOLD) {
+        ESP_LOGW(TAG, "=== LONG PRESS DETECTED === Wi-Fi reset + restart");
+        nvs_handle_t nvs;
+        if (nvs_open("wifi", NVS_READWRITE, &nvs) == ESP_OK) {
+            nvs_erase_key(nvs, "ssid");
+            nvs_erase_key(nvs, "password");
+            nvs_commit(nvs);
+            nvs_close(nvs);
+            ESP_LOGI(TAG, "Wi-Fi config erased from NVS");
+        }
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        ESP_LOGI(TAG, "Restarting ESP32 now...");
+        esp_restart();
+    }
+}
+
+void  hal_level_init()
+{
 
     // sntp init
     initialize_sntp();
@@ -215,6 +236,9 @@ void  hal_level_init(){
     set_audio_val(vol_handle,audio_vol);
     iot_wakeup_init((iot_wakeup_cb)rec_engine_cb);
     iot_wakeup_start();
+
+    button_init();
+    button_register_cb(6, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);
     // Allow other core to finish initialization
     // vTaskDelay(pdMS_TO_TICKS(2000));
 }
