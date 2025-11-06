@@ -12,7 +12,7 @@
 #include "filter_resample.h"
 #include "i2s_stream.h"
 #include "pthread.h"
-#ifdef CONFIG_ESP32_S3_KORVO2_V3_BOARD
+#if (CONFIG_ESP32_S3_KORVO2_V3_BOARD || CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
 #include "es7210.h"
 #elif CONFIG_M5STACK_ATOMS3R_BOARD
 #include "es8311.h"
@@ -28,7 +28,7 @@
 static const char *TAG = "AUDIO_PIPELINE";
 #define I2S_SAMPLE_RATE 16000
 #define ALGO_SAMPLE_RATE 16000
-#ifdef CONFIG_ESP32_S3_KORVO2_V3_BOARD
+#if (CONFIG_ESP32_S3_KORVO2_V3_BOARD || CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
 #define ALGORITHM_STREAM_SAMPLE_BIT 32
 #define CHANNEL_FORMAT I2S_CHANNEL_TYPE_ONLY_LEFT
 #define ALGORITHM_INPUT_FORMAT "RM"
@@ -61,7 +61,7 @@ static audio_element_handle_t create_resample_stream(int src_rate, int src_ch, i
 
 static audio_element_handle_t create_record_i2s_stream(void)
 {
-#if CONFIG_ESP32_S3_KORVO2_V3_BOARD
+#if (CONFIG_ESP32_S3_KORVO2_V3_BOARD || CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
     es7210_adc_set_gain(ES7210_INPUT_MIC3, GAIN_30DB);
 #elif CONFIG_M5STACK_ATOMS3R_BOARD
     es8311_set_mic_gain(ES8311_MIC_GAIN_36DB);
@@ -211,7 +211,7 @@ static audio_element_handle_t create_player_i2s_stream(void)
 {
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT_WITH_PARA(I2S_NUM_0, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, AUDIO_STREAM_WRITER);
     i2s_cfg.type = AUDIO_STREAM_WRITER;
-#ifdef CONFIG_ESP32_S3_KORVO2_V3_BOARD
+#if (CONFIG_ESP32_S3_KORVO2_V3_BOARD || CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
     i2s_cfg.need_expand = (16 != 32);
 #endif
     i2s_cfg.out_rb_size = 8 * 1024;
