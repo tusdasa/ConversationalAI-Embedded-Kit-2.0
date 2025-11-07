@@ -1,23 +1,289 @@
 // Copyright (2025) Beijing Volcano Engine Technology Ltd.
 // SPDX-License-Identifier: Apache-2.0
-
-#include "volc_hal_capture.h"
-
 #include <stddef.h>
+#include "audio_common.h"
+#include "audio_sys.h"
+#include "board.h"
+#include "volc_hal_capture.h"
+#include "volc_osal.h"
+#include "audio_pipeline.h"
+#include "audio_element.h"
+#include "raw_stream.h"
+#include "audio_thread.h"
+#include "algorithm_stream.h"
+#include "filter_resample.h"
+#include "i2s_stream.h"
+#include "util/volc_log.h"
+#if (CONFIG_ESP32_S3_KORVO2_V3_BOARD || CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
+#include "es7210.h"
+#elif CONFIG_M5STACK_ATOMS3R_BOARD
+#include "es8311.h"
+#endif
+#include "esp_timer.h"
+#if defined(CONFIG_VOLC_AUDIO_G711A)
+#include "g711_encoder.h"
+#include "g711_decoder.h"
+#endif
+#include "audio_idf_version.h"
+#include "raw_stream.h"
+#define CHANNEL 1
+#define I2S_SAMPLE_RATE 16000
+#define ALGO_SAMPLE_RATE 16000
+#if (CONFIG_ESP32_S3_KORVO2_V3_BOARD || CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
+#define ALGORITHM_STREAM_SAMPLE_BIT 32
+#define CHANNEL_FORMAT I2S_CHANNEL_TYPE_ONLY_LEFT
+#define ALGORITHM_INPUT_FORMAT "RM"
+#define CHANNEL_NUM 1
+#elif CONFIG_M5STACK_ATOMS3R_BOARD
+#define ALGORITHM_STREAM_SAMPLE_BIT 16
+#define CHANNEL_FORMAT I2S_CHANNEL_TYPE_RIGHT_LEFT
+#define ALGORITHM_INPUT_FORMAT "MR"
+#define CHANNEL_NUM 2
+#endif
+#if (CONFIG_VOLC_AUDIO_G711A)
+#define CODEC_NAME          "g711a"
+#define CODEC_SAMPLE_RATE   8000
+#else
+#define CODEC_NAME        "pcm"
+#define CODEC_SAMPLE_RATE 16000
+#endif
 
+struct volc_capture_impl_t
+{
+    audio_pipeline_handle_t  audio_pipeline;
+    audio_element_handle_t   i2s_stream_reader;
+    audio_element_handle_t   audio_encoder;
+    audio_element_handle_t   raw_reader;
+    audio_element_handle_t   rsp;
+    audio_element_handle_t   algo_aec;
+    volc_capture_config_t    config;
+    volc_osal_tid_t          capture_thread;
+    volc_osal_sem_t          semaphore;
+    volatile bool            is_running;
+};
 
-volc_capture_t volc_capture_create(volc_capture_config_t* config) {
+typedef struct volc_capture_impl_t volc_capture_impl_t;
+
+static int volc_capture_get_default_read_size(volc_capture_t capture)
+{
+    // 60ms
+#if (CONFIG_VOLC_AUDIO_G711A)
+    return (160 * 3);
+#else
+    return 1920;
+#endif
+}
+
+static void volc_capture_task(void *arg)
+{
+    volc_capture_impl_t *impl = (volc_capture_impl_t *)arg;
+    LOGI("capture task started...");
+    audio_pipeline_run(impl->audio_pipeline);
+    if (impl->semaphore) {
+        volc_osal_sem_wait(impl->semaphore);
+    }
+
+    impl->is_running = true;
+
+    int read_size = volc_capture_get_default_read_size(impl->audio_pipeline);
+    uint8_t *read_buf = volc_osal_malloc(read_size);
+    mem_assert(read_buf);
+
+    while (impl->is_running) {
+        int ret = raw_stream_read(impl->raw_reader, read_buf, read_size);
+        if (ret > 0 && impl->config.data_cb) {
+        #ifdef CONFIG_VOLC_AUDIO_G711A
+            volc_frame_info_t frame_info = {
+                .data_type = VOLC_AUDIO_DATA_TYPE_G711A,
+                .user_data = impl->config.user_data,
+            };
+            impl->config.data_cb(impl, (const void *)read_buf, ret, &frame_info);
+        #else
+            volc_frame_info_t frame_info = {
+                .data_type = VOLC_AUDIO_DATA_TYPE_PCM,
+                .user_data = impl->config.user_data,
+            };
+            impl->config.data_cb(impl, (const void *)read_buf, ret, &frame_info);
+        #endif
+        }
+    }
+    volc_capture_stop(impl);
+    audio_pipeline_wait_for_stop(impl->audio_pipeline);
+    if (impl->capture_thread) {
+        volc_osal_thread_destroy(&impl->capture_thread);
+    }
+    volc_osal_free(read_buf);
+}
+
+static audio_element_handle_t create_resample_stream(int src_rate, int src_ch, int dest_rate, int dest_ch)
+{
+    rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
+    rsp_cfg.src_rate = src_rate;
+    rsp_cfg.src_ch = src_ch;
+    rsp_cfg.dest_rate = dest_rate;
+    rsp_cfg.dest_ch = dest_ch;
+    rsp_cfg.complexity = 5;
+    audio_element_handle_t stream = rsp_filter_init(&rsp_cfg);
+    return stream;
+}
+
+static audio_element_handle_t create_record_i2s_stream(void)
+{
+#if (CONFIG_ESP32_S3_KORVO2_V3_BOARD || CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
+    es7210_adc_set_gain(ES7210_INPUT_MIC3, GAIN_30DB);
+#elif CONFIG_M5STACK_ATOMS3R_BOARD
+    es8311_set_mic_gain(ES8311_MIC_GAIN_36DB);
+#endif
+    i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT_WITH_PARA(CODEC_ADC_I2S_PORT, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, AUDIO_STREAM_READER); // 参数需要仔细检查
+    i2s_cfg.type = AUDIO_STREAM_READER;
+    i2s_stream_set_channel_type(&i2s_cfg, CHANNEL_FORMAT);
+    i2s_cfg.std_cfg.clk_cfg.sample_rate_hz = I2S_SAMPLE_RATE;
+    return i2s_stream_init(&i2s_cfg);
+}
+
+static audio_element_handle_t create_record_encoder_stream(void)
+{
+#if(CONFIG_VOLC_AUDIO_G711A)
+    g711_encoder_cfg_t g711_cfg = DEFAULT_G711_ENCODER_CONFIG();
+    return g711_encoder_init(&g711_cfg);
+#else
     return NULL;
+#endif
 }
 
-void volc_capture_destroy(volc_capture_t capture) {
-
+static audio_element_handle_t create_record_raw_stream(void)
+{
+    audio_element_handle_t raw_stream = NULL;
+    raw_stream_cfg_t raw_cfg = RAW_STREAM_CFG_DEFAULT();
+    raw_cfg.type = AUDIO_STREAM_WRITER;
+    raw_cfg.out_rb_size = 2 * 1024;
+    raw_stream = raw_stream_init(&raw_cfg);
+    audio_element_set_output_timeout(raw_stream, portMAX_DELAY);
+    return raw_stream;
 }
 
-int volc_capture_start(volc_capture_t capture) {
+static audio_element_handle_t create_record_algo_stream(void)
+{
+    LOGI("[3.1] Create algorithm stream for aec");
+    algorithm_stream_cfg_t algo_config = ALGORITHM_STREAM_CFG_DEFAULT();
+    algo_config.sample_rate = ALGO_SAMPLE_RATE;
+    algo_config.out_rb_size = 256;
+    algo_config.algo_mask = ALGORITHM_STREAM_DEFAULT_MASK | ALGORITHM_STREAM_USE_AGC;
+    algo_config.input_format = ALGORITHM_INPUT_FORMAT;
+    audio_element_handle_t element_algo = algo_stream_init(&algo_config);
+    audio_element_set_music_info(element_algo, ALGO_SAMPLE_RATE, 1, 16);
+    audio_element_set_input_timeout(element_algo, portMAX_DELAY);
+    return element_algo;
+}
+
+volc_capture_t volc_capture_create(volc_capture_config_t* config)
+{
+    volc_capture_impl_t *capture = (volc_capture_impl_t *)volc_osal_calloc(1, sizeof(volc_capture_impl_t));
+
+    // config
+    capture->is_running = false;
+    capture->config.media_type = config->media_type;
+    capture->config.data_cb = config->data_cb;
+    capture->config.user_data = config->user_data;
+
+    // create and register streams
+    audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
+    capture->audio_pipeline = audio_pipeline_init(&pipeline_cfg);
+    mem_assert(capture->audio_pipeline);
+    capture->i2s_stream_reader = create_record_i2s_stream();
+    audio_pipeline_register(capture->audio_pipeline, capture->i2s_stream_reader, "i2s");
+    capture->algo_aec = create_record_algo_stream();
+    audio_pipeline_register(capture->audio_pipeline, capture->algo_aec, "algo");
+    capture->rsp = create_resample_stream(I2S_SAMPLE_RATE, 1, CODEC_SAMPLE_RATE, 1);
+    audio_pipeline_register(capture->audio_pipeline, capture->rsp, "rsp");
+    capture->audio_encoder = create_record_encoder_stream();
+    if (capture->audio_encoder) {
+        audio_pipeline_register(capture->audio_pipeline, capture->audio_encoder, CODEC_NAME);
+    }
+    capture->raw_reader = create_record_raw_stream();
+    audio_pipeline_register(capture->audio_pipeline, capture->raw_reader, "raw");
+#if (CONFIG_VOLC_AUDIO_G711A)
+    const char *link_tag[] = {"i2s", "algo", "rsp", CODEC_NAME, "raw"};
+#else
+    const char *link_tag[] = {"i2s", "algo", "raw"};
+#endif
+    audio_pipeline_link(capture->audio_pipeline, &link_tag[0], sizeof(link_tag) / sizeof(link_tag[0]));
+    // create thread
+    volc_osal_thread_param_t param = {0};
+    snprintf(param.name, sizeof(param.name), "%s", "volc_capture_task");
+    param.stack_size = 4 * 1024;
+    param.priority = 5;
+    esp_err_t ret = volc_osal_thread_create(&capture->capture_thread, &param, volc_capture_task, capture);
+    mem_assert(ret == 0);
+    capture->semaphore = volc_osal_sem_create();
+    mem_assert(capture->semaphore);
+    
+    return (volc_capture_t)capture;
+}
+
+int volc_capture_start(volc_capture_t capture)
+{
+    volc_capture_impl_t *impl = (volc_capture_impl_t *)capture;
+    
+    if (impl->semaphore) {
+        volc_osal_sem_post(impl->semaphore);
+    }
+
+    LOGI("capture task start...");
     return 0;
 }
 
-int volc_capture_stop(volc_capture_t capture) {
+int volc_capture_stop(volc_capture_t capture)
+{
+    volc_capture_impl_t *impl = (volc_capture_impl_t *)capture;
+    
+    impl->is_running = false;
+    raw_stream_write(impl->raw_reader, NULL, 0);
     return 0;
+}
+
+void volc_capture_destroy(volc_capture_t capture)
+{
+    volc_capture_impl_t *impl = (volc_capture_impl_t *)capture;
+    if (!impl) {
+        return;
+    }
+
+    impl->is_running = false;
+    audio_pipeline_stop(impl->audio_pipeline);
+    audio_pipeline_wait_for_stop(impl->audio_pipeline);
+    audio_pipeline_terminate(impl->audio_pipeline);
+    if (impl->i2s_stream_reader)
+    {
+        audio_pipeline_unregister(impl->audio_pipeline, impl->i2s_stream_reader);
+        audio_element_deinit(impl->i2s_stream_reader);
+    }
+    if (impl->audio_encoder) {
+        audio_pipeline_unregister(impl->audio_pipeline, impl->audio_encoder);
+        audio_element_deinit(impl->audio_encoder);
+    }
+    if (impl->raw_reader)
+    {
+        audio_pipeline_unregister(impl->audio_pipeline, impl->raw_reader);
+        audio_element_deinit(impl->raw_reader);
+    }
+    if (impl->rsp)
+    {
+        audio_pipeline_unregister(impl->audio_pipeline, impl->rsp);
+        audio_element_deinit(impl->rsp);
+    }
+    if (impl->algo_aec)
+    {
+        audio_pipeline_unregister(impl->audio_pipeline, impl->algo_aec);
+        audio_element_deinit(impl->algo_aec);
+    }
+    impl->config.user_data = NULL;
+    if (impl->semaphore) {
+        volc_osal_sem_destroy(impl->semaphore);
+        impl->semaphore = NULL;
+    }
+
+    audio_thread_delete_task(&impl->capture_thread);
+    audio_pipeline_deinit(impl->audio_pipeline);
+    volc_osal_free(impl);
 }

@@ -31,6 +31,7 @@
 #include "periph_wifi.h"
 #include "fatfs_stream.h"
 #include "i2s_stream.h"
+#include "volc_hal_capture.h"
 #include "pipeline.h"
 #include "cJSON.h"
 #include "network.h"
@@ -252,14 +253,27 @@ static int __volc_audio_codec(void) {
 #endif
 }
 
+void volc_capture_audio_data(volc_capture_t capture, const void* data, int len, volc_frame_info_t* frame_info)
+{
+    // TODO: add audio data processing logic
+    volc_audio_frame_info_t info = {0};
+    info.data_type = frame_info->data_type;
+    info.commit = false;
+    volc_send_audio_data(engine_ctx.engine, data, len, &info);
+}
+
 static void conv_ai_task(void *pvParameters)
 {
     int audio_codec = __volc_audio_codec();
     int error = 0;
     // step 1: start audio capture & play
-    recorder_pipeline_handle_t pipeline = recorder_pipeline_open();
+    volc_capture_config_t capture_config = {
+        .media_type = VOLC_MEDIA_TYPE_AUDIO,
+        .data_cb = volc_capture_audio_data,
+        .user_data = &engine_ctx,
+    };
+    volc_capture_t pipeline = volc_capture_create(&capture_config);
     player_pipeline_handle_t player_pipeline = player_pipeline_open();
-    recorder_pipeline_run(pipeline);
     player_pipeline_run(player_pipeline);
 
     // step 2: create ai agent
@@ -300,33 +314,38 @@ static void conv_ai_task(void *pvParameters)
         return;
     }
 
-    int read_size = recorder_pipeline_get_default_read_size(pipeline);
-    uint8_t *audio_buffer = heap_caps_malloc(read_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (!audio_buffer)
-    {
-        ESP_LOGE(TAG, "Failed to alloc audio buffer!");
-        return;
-    }
+    // int read_size = volc_capture_get_default_read_size(pipeline);
+    // uint8_t *audio_buffer = heap_caps_malloc(read_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    // if (!audio_buffer)
+    // {
+    //     ESP_LOGE(TAG, "Failed to alloc audio buffer!");
+    //     return;
+    // }
     // step 4: start sending audio data
-    volc_audio_frame_info_t info = {0};
-#if (CONFIG_VOLC_AUDIO_G711A)
-    info.data_type = VOLC_AUDIO_DATA_TYPE_G711A;
-#else
-    info.data_type = VOLC_AUDIO_DATA_TYPE_PCM;
-#endif
-    info.commit = false;
+//     volc_audio_frame_info_t info = {0};
+// #if (CONFIG_VOLC_AUDIO_G711A)
+//     info.data_type = VOLC_AUDIO_DATA_TYPE_G711A;
+// #else
+//     info.data_type = VOLC_AUDIO_DATA_TYPE_PCM;
+// #endif
+//     info.commit = false;
+    // while (1)
+    // {
+    //     int ret = volc_capture_read(pipeline, (char *)audio_buffer, read_size);
+    //     if (ret == read_size && is_ready)
+    //     {
+    //         // push_audio data
+    //         volc_send_audio_data(engine_ctx.engine, audio_buffer, read_size, &info);
+    //     }
+    // }
+    volc_capture_start(pipeline);
     while (1)
     {
-        int ret = recorder_pipeline_read(pipeline, (char *)audio_buffer, read_size);
-        if (ret == read_size && is_ready)
-        {
-            // push_audio data
-            volc_send_audio_data(engine_ctx.engine, audio_buffer, read_size, &info);
-        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
     // step 5: stop audio capture
-    recorder_pipeline_close(pipeline);
+    volc_capture_destroy(pipeline);
 
     // step 6: stop and destroy engine
     volc_stop(engine_ctx.engine);

@@ -357,8 +357,8 @@ void conv_ai_task(void *pvParameters)
     audio_capture_destroy(pipeline);
     // step 6: stop and destroy engine
     volc_stop(engine_ctx.engine);
+    volc_osal_free(audio_buffer);
     // volc_destroy(engine_ctx.engine);
-
 
     // step 7: stop audio play
     audio_player_destroy(player_pipeline);

@@ -14,14 +14,18 @@ extern "C" {
  */ 
 typedef void* volc_capture_t;
 
-typedef void (*volc_capture_data_cb_t)(volc_capture_t capture, const void* data, int len, void* user_data);
+typedef struct {
+    volc_audio_data_type_e data_type; // Audio data type
+    void* user_data;                  // User data pointer
+} volc_frame_info_t;
+
+typedef void (*volc_capture_data_cb_t)(volc_capture_t capture, const void* data, int len, volc_frame_info_t* frame_info);
 
 typedef struct volc_capture_config {
     volc_media_type_e media_type;   // Media type
     volc_capture_data_cb_t data_cb; // Data callback function
     void* user_data;               // User data pointer
 } volc_capture_config_t;
-
 
 /**
  * @brief Create a capture instance

@@ -11,7 +11,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <esp_netif.h>
-#include <freertos/FreeRTOS.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 void* volc_osal_malloc(size_t size) {
     return heap_caps_malloc(size,MALLOC_CAP_SPIRAM | MALLOC_CAP_DEFAULT);
@@ -62,6 +63,35 @@ void volc_osal_mutex_destroy(volc_osal_mutex_t mutex) {
     }
     pthread_mutex_destroy(p_mutex);
     volc_osal_free(p_mutex);
+}
+
+volc_osal_sem_t volc_osal_sem_create() {
+    SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+    if (NULL == sem) {
+        return NULL;
+    }
+    return (volc_osal_sem_t)sem;
+}
+
+void volc_osal_sem_wait(volc_osal_sem_t sem) {
+    if (NULL == sem) {
+        return;
+    }
+    xSemaphoreTake((SemaphoreHandle_t)sem, portMAX_DELAY);
+}
+
+void volc_osal_sem_post(volc_osal_sem_t sem) {
+    if (NULL == sem) {
+        return;
+    }
+    xSemaphoreGive((SemaphoreHandle_t)sem);
+}
+
+void volc_osal_sem_destroy(volc_osal_sem_t sem) {
+    if (NULL == sem) {
+        return;
+    }
+    vSemaphoreDelete((SemaphoreHandle_t)sem);
 }
 
 uint64_t volc_osal_get_time_ms(void) {

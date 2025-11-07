@@ -23,6 +23,12 @@ void volc_osal_mutex_lock(volc_osal_mutex_t mutex);
 void volc_osal_mutex_unlock(volc_osal_mutex_t mutex);
 void volc_osal_mutex_destroy(volc_osal_mutex_t mutex);
 
+typedef void* volc_osal_sem_t;
+volc_osal_sem_t volc_osal_sem_create(void);
+void volc_osal_sem_wait(volc_osal_sem_t sem);
+void volc_osal_sem_post(volc_osal_sem_t sem);
+void volc_osal_sem_destroy(volc_osal_sem_t sem);
+
 uint64_t volc_osal_get_time_ms(void);
 
 int volc_osal_get_uuid(char* uuid, size_t size);
