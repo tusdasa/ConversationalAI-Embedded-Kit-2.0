@@ -28,13 +28,13 @@ typedef enum {
 typedef void (*volc_button_event_cb_t)(volc_button_t button, volc_button_event_e event, void* user_data);
 
 typedef struct volc_button_config {
-    int gpio_num;              // GPIO number of the button
-    int active_level;          // Active level of the button (0 or 1)
-    int long_press_ms;         // Long press threshold in milliseconds
-    int short_press_ms;        // Short press threshold in milliseconds
-    int enable_power_save;     // Whether to enable power save mode
-    void* user_data;           // User data pointer
-    volc_button_event_cb_t event_cb; // Button event callback function
+    int gpio_num;                             // GPIO number of the button
+    int active_level;                         // Active level of the button (0 or 1)
+    int long_press_ms;                        // Long press threshold in milliseconds
+    int short_press_ms;                       // Short press threshold in milliseconds
+    int enable_power_save;                    // Whether to enable power save mode (0 or 1)
+    void* user_data;                           // User data pointer
+    volc_button_event_cb_t event_cb;         // Button event callback function
 } volc_button_config_t;
 
 /**

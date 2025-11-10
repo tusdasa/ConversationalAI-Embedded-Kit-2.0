@@ -38,8 +38,9 @@
 #include "volc_conv_ai.h"
 #define PRINT_TASK_INFO 0
 
-#include "iot_button.h"
-#include "button_gpio.h"
+// #include "iot_button.h"
+// #include "button_gpio.h"
+#include "volc_hal_button.h"
 #define STATS_TASK_PRIO 5
 
 static const char *TAG = "VolcConvAI";
@@ -71,6 +72,8 @@ static char config_buf[1024] = {0};
 static char config_audio[256] = {0};
 static engine_context_t engine_ctx = {0};
 static bool is_ready = false;
+
+static volc_button_t button = NULL;
 
 static void init_echoear_board_power(void)
 {
@@ -196,10 +199,10 @@ void wait_for_time_sync(void)
     }
 }
 
-static void wifi_ap_event_cb(void *arg, void *data)
+static void wifi_ap_event_cb(volc_button_t button, volc_button_event_e event, void* user_data)
 {
-    button_event_t btn_evt = iot_button_get_event(arg);
-    if (btn_evt == BUTTON_LONG_PRESS_HOLD) {
+
+    if (event == VOLC_BUTTON_LONG_PRESS_HOLD) {
         ESP_LOGW(TAG, "=== LONG PRESS DETECTED === Wi-Fi reset + restart");
         nvs_handle_t nvs;
         if (nvs_open("wifi", NVS_READWRITE, &nvs) == ESP_OK) {
@@ -214,17 +217,17 @@ static void wifi_ap_event_cb(void *arg, void *data)
         esp_restart();
     }
 }
-static void button_init(void)
-{
-    button_config_t btn_config = { 0 };
-    btn_config.type = BUTTON_TYPE_GPIO;
-    btn_config.gpio_button_config.gpio_num = GPIO_NUM_0;
-    btn_config.gpio_button_config.active_level = 0;
+// static void button_init(void)
+// {
+//     button_config_t btn_config = { 0 };
+//     btn_config.type = BUTTON_TYPE_GPIO;
+//     btn_config.gpio_button_config.gpio_num = GPIO_NUM_0;
+//     btn_config.gpio_button_config.active_level = 0;
     
-    button_handle_t btn = NULL;
-    btn = iot_button_create(&btn_config);
-    iot_button_register_cb(btn, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);
-}
+//     button_handle_t btn = NULL;
+//     btn = iot_button_create(&btn_config);
+//     iot_button_register_cb(btn, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);
+// }
 
 static void sys_monitor_task(void *pvParameters)
 {
@@ -344,6 +347,8 @@ static void conv_ai_task(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
+    volc_button_destroy(button);
+
     // step 5: stop audio capture
     volc_capture_destroy(pipeline);
 
@@ -376,7 +381,17 @@ void app_main(void)
 
     ESP_ERROR_CHECK(esp_netif_init());
 
-    button_init();
+    // button
+    volc_button_config_t button_config = {0};
+    button_config.gpio_num = GPIO_NUM_0;
+    button_config.active_level = 0;
+    button_config.event_cb = wifi_ap_event_cb;
+    button_config.user_data = &engine_ctx;
+    button = volc_button_create(&button_config);
+    if (NULL == button) {
+        ESP_LOGE(TAG, "Failed to create button!");
+        return;
+    }
 
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
