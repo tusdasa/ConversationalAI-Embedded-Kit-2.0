@@ -32,7 +32,7 @@
 #include "fatfs_stream.h"
 #include "i2s_stream.h"
 #include "volc_hal_capture.h"
-#include "pipeline.h"
+#include "volc_hal_player.h"
 #include "cJSON.h"
 #include "network.h"
 #include "volc_conv_ai.h"
@@ -63,7 +63,7 @@ static volatile bool is_interrupt = false;
 
 typedef struct
 {
-    player_pipeline_handle_t player_pipeline;
+    volc_hal_player_t player;
     volc_event_handler_t volc_event_handler;
     volc_engine_t engine;
 } engine_context_t;
@@ -120,12 +120,12 @@ static void _on_volc_audio_data(volc_engine_t handle, const void *data_ptr, size
         ESP_LOGE(TAG, "demo is NULL\n");
         return;
     }
-    if (demo->player_pipeline == NULL)
+    if (demo->player == NULL)
     {
-        ESP_LOGE(TAG, "player pipeline is NULL\n");
+        ESP_LOGE(TAG, "player is NULL\n");
         return;
     }
-    player_pipeline_write(demo->player_pipeline, data_ptr, data_len);
+    volc_hal_player_play_data(demo->player, data_ptr, data_len);
 }
 
 static void _on_volc_video_data(volc_engine_t handle, const void *data_ptr, size_t data_len, volc_video_frame_info_t *info_ptr, void *user_data)
@@ -276,8 +276,11 @@ static void conv_ai_task(void *pvParameters)
         .user_data = &engine_ctx,
     };
     volc_capture_t pipeline = volc_capture_create(&capture_config);
-    player_pipeline_handle_t player_pipeline = player_pipeline_open();
-    player_pipeline_run(player_pipeline);
+    volc_hal_player_config_t player_config = {
+        .media_type = VOLC_MEDIA_TYPE_AUDIO,
+    };
+    volc_hal_player_t player = volc_hal_player_create(&player_config);
+    volc_hal_player_start(player);
 
     // step 2: create ai agent
     snprintf(config_buf, sizeof(config_buf), CONV_AI_CONFIG_FORMAT,
@@ -295,7 +298,7 @@ static void conv_ai_task(void *pvParameters)
         .on_volc_message_data = _on_volc_message_data,
     };
     engine_ctx.volc_event_handler = volc_event_handler;
-    engine_ctx.player_pipeline = player_pipeline;
+    engine_ctx.player = player;
     error = volc_create(&engine_ctx.engine, config_buf, &engine_ctx.volc_event_handler, &engine_ctx);
     if (error != 0)
     {
@@ -357,7 +360,7 @@ static void conv_ai_task(void *pvParameters)
     volc_destroy(engine_ctx.engine);
 
     // step 7: stop audio play
-    player_pipeline_close(player_pipeline);
+    volc_hal_player_destroy(player);
     vTaskDelete(NULL);
 }
 
