@@ -70,7 +70,7 @@ static int volc_capture_get_default_read_size(volc_capture_t capture)
 #if (CONFIG_VOLC_AUDIO_G711A)
     return (160 * 3);
 #else
-    return 1920;
+    return 960;
 #endif
 }
 
@@ -110,9 +110,10 @@ static void volc_capture_task(void *arg)
     volc_capture_stop(impl);
     audio_pipeline_wait_for_stop(impl->audio_pipeline);
     if (impl->capture_thread) {
-        volc_osal_thread_destroy(&impl->capture_thread);
+        volc_osal_thread_destroy(impl->capture_thread);
     }
     volc_osal_free(read_buf);
+    volc_osal_thread_exit(NULL);
 }
 
 static audio_element_handle_t create_resample_stream(int src_rate, int src_ch, int dest_rate, int dest_ch)
@@ -283,7 +284,6 @@ void volc_capture_destroy(volc_capture_t capture)
         impl->semaphore = NULL;
     }
 
-    audio_thread_delete_task(&impl->capture_thread);
     audio_pipeline_deinit(impl->audio_pipeline);
     volc_osal_free(impl);
 }

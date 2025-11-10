@@ -540,8 +540,17 @@ typedef enum {
      * @locale zh
      * @brief 可靠消息
      */
-    RTS_MESSAGE_RELIABLE = 0,
-    
+    RTS_MESSAGE_RELIABLE                = 0,
+    /**
+     * @locale zh
+     * @brief 不可靠有序消息
+     */
+    RTS_MESSAGE_UNRELIABLE_ORDERED      = 1,
+    /**
+     * @locale zh
+     * @brief 不可靠无序消息
+    */
+    RTS_MESSAGE_UNRELIABLE_UNORDERED    = 2
 } rts_message_type;
 
 /**
@@ -571,6 +580,8 @@ typedef enum {
      */
     STREAM_STATUS_UNSUBSCRIBED = 3,
 } stream_status_e;
+
+
 
 typedef void * byte_rtc_engine_t;
 
@@ -1155,7 +1166,7 @@ extern __byte_rtc_api__ int byte_rtc_send_video_data(byte_rtc_engine_t engine, c
  * @param data_ptr 实时信令消息数据
  * @param data_len 实时信令消息长度
  * @param binary 指定消息是否是二进制消息
- * @param type 用于指定实时信令消息类型，目前仅支持RTS_MESSAGE_RELIABLE
+ * @param type 用于指定实时信令消息类型，对于房间内广播消息，仅支持RTS_MESSAGE_RELIABLE
 
  * @return 方法调用结果：<br>
  *         - < 0：失败 <br>

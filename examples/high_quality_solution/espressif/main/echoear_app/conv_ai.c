@@ -1,13 +1,12 @@
 #include "volc_conv_ai.h"
 #include "audio_player.h"
-#include "audio_capture.h"
 #include "volc_osal.h"
 #include "iot_local_function_list.h"
 #include <stdio.h>
 #include <string.h>
 #include "conv_ai.h"
 
-
+#include "volc_hal_capture.h"
 #include "common_def.h"
 
 
@@ -38,7 +37,8 @@
       \"{\\\"debug\\\":{\\\"log_to_console\\\":1}}\",\
       \"{\\\"audio\\\":{\\\"codec\\\":{\\\"internal\\\":{\\\"enable\\\":1}}}}\",\
       \"{\\\"rtc\\\":{\\\"access\\\":{\\\"concurrent_requests\\\":1}}}\",\
-      \"{\\\"rtc\\\":{\\\"ice\\\":{\\\"concurrent_agents\\\":1}}}\"\
+      \"{\\\"rtc\\\":{\\\"ice\\\":{\\\"concurrent_agents\\\":1}}}\",\
+      \"{\\\"audio\\\":{\\\"codec\\\":{\\\"pcma\\\":{\\\"s_samples_per_frame\\\":480}}}}\"\
     ]\
   }\
 }"
@@ -284,43 +284,38 @@ void conv_ai_init(){
     }
 }
 
+void audio_capture_cb(volc_capture_t capture, const void* data, int len, volc_frame_info_t* frame_info){
+    volc_audio_frame_info_t info = {0};
+    
+    info.commit = false;
+    info.data_type =  frame_info->data_type;
+    if(!is_interrupt)
+    {   
+        volc_send_audio_data(engine_ctx.engine, data, len, &info);
+    }
+}
+
 void conv_ai_task(void *pvParameters)
 {
     int error = 0;
     iot_display_string("ai对话创建中");
 
     // step 1: start audio capture & play
-    audio_capture_handle pipeline = audio_capture_create(1,16000);
+    volc_capture_config_t  capture_audio_config  = {0};
+    capture_audio_config.media_type = VOLC_MEDIA_TYPE_AUDIO;
+    capture_audio_config.data_cb = audio_capture_cb;
+
+    volc_capture_t audio_capture_ = volc_capture_create(&capture_audio_config);
+
+    
     audio_player_handle player_pipeline = audio_player_create(1,16000);
-    audio_capture_init(pipeline);
     audio_player_init(player_pipeline);
     
     engine_ctx.player_pipeline = player_pipeline;
 
-    // step 2: create ai agent
-    // snprintf(config_buf, sizeof(config_buf), CONV_AI_CONFIG_FORMAT,
-    //          CONFIG_VOLC_INSTANCE_ID,
-    //          CONFIG_VOLC_PRODUCT_KEY,
-    //          CONFIG_VOLC_PRODUCT_SECRET,
-    //          CONFIG_VOLC_DEVICE_NAME);
-
-    // volc_event_handler_t volc_event_handler = {
-    //     .on_volc_event = _on_volc_event,
-    //     .on_volc_conversation_status = _on_volc_conversation_status,
-    //     .on_volc_audio_data = _on_volc_audio_data,
-    //     .on_volc_video_data = _on_volc_video_data,
-    //     .on_volc_message_data = _on_volc_message_data,
-    // };
-   
-    // error = volc_create(&engine_ctx.engine, config_buf, &engine_ctx.volc_event_handler, &engine_ctx);
-    // if (error != 0)
-    // {
-    //     printf("Failed to create volc engine! error=%d", error);
-    //     return;
-    // }
     iot_display_string("ai对话连接中");
 
-    // step 3: start ai agent
+    // step 2: start ai agent
     volc_opt_t opt = {
         .mode = VOLC_MODE_RTC,
         .bot_id = CONFIG_VOLC_BOT_ID};
@@ -332,35 +327,18 @@ void conv_ai_task(void *pvParameters)
         volc_destroy(engine_ctx.engine);
         return;
     }
-    // int read_size = recorder_pipeline_get_default_read_size(pipeline);
-    int read_size = 320;
-    uint8_t *audio_buffer = volc_osal_malloc(read_size);
-    if (!audio_buffer)
-    {
-        printf("Failed to alloc audio buffer!");
-        return;
-    }
-    // step 4: start sending audio data
-    volc_audio_frame_info_t info = {0};
-    info.data_type = VOLC_AUDIO_DATA_TYPE_PCM;
-    info.commit = false;
-    while (!is_interrupt)
-    {   
-        int ret = capture_audio(pipeline, (char *)audio_buffer, read_size);
-        if (ret == read_size && is_ready)
-        {
-            // push_audio data
-            volc_send_audio_data(engine_ctx.engine, audio_buffer, read_size, &info);
-        }
-    }
-    // step 5: stop audio capture
-    audio_capture_destroy(pipeline);
-    // step 6: stop and destroy engine
-    volc_stop(engine_ctx.engine);
-    volc_osal_free(audio_buffer);
-    // volc_destroy(engine_ctx.engine);
+    volc_capture_start(audio_capture_);
 
-    // step 7: stop audio play
+    while(!is_interrupt){
+        sleep(1);
+    }
+
+    // step 3: stop and destroy engine
+    volc_capture_stop(audio_capture_);
+    volc_capture_destroy(audio_capture_);
+    volc_stop(engine_ctx.engine);
+
+    // step 4: stop audio play
     audio_player_destroy(player_pipeline);
     // memset(&engine_ctx,0,sizeof(engine_context_t));
     is_ready = false;

@@ -26,6 +26,8 @@
 
 #include "audio_idf_version.h"
 #include "raw_stream.h"
+#include "recorder_sr.h"
+#include "recorder_encoder.h"
 
 #define CHANNEL 1
 static const char *TAG = "AUDIO_PIPELINE";
@@ -51,6 +53,9 @@ static const char *TAG = "AUDIO_PIPELINE";
 #endif
 
 #define CODEC_SAMPLE_RATE 8000
+
+static struct recorder_pipeline_t *s_recorder_pipeline = NULL;
+
 
 static audio_element_handle_t create_resample_stream(int src_rate, int src_ch, int dest_rate, int dest_ch)
 {
@@ -132,11 +137,31 @@ recorder_pipeline_handle_t recorder_pipeline_open()
 
     pipeline->raw_reader = create_record_raw_stream();
     audio_pipeline_register(pipeline->audio_pipeline, pipeline->raw_reader, "raw");
-
-    const char *link_tag[] = {"i2s", "algo", "rsp", "raw"};
-    audio_pipeline_link(pipeline->audio_pipeline, &link_tag[0], sizeof(link_tag) / sizeof(link_tag[0]));
+    s_recorder_pipeline = pipeline;
+    // const char *link_tag[] = {"i2s", "algo", "rsp", "raw"};
+    // audio_pipeline_link(pipeline->audio_pipeline, &link_tag[0], sizeof(link_tag) / sizeof(link_tag[0]));
     return pipeline;
 }
+
+void recorder_pipeline_link_update(recorder_pipeline_handle_t handle,recorder_pipeline_type type){
+    //  audio_pipeline_link 这个api会unlink掉pipeline 再重新link 
+    if(type == WAKE_UP){
+        const char *link_tag[2] = {"i2s", "raw"};
+        audio_pipeline_link(handle->audio_pipeline, &link_tag[0], 2);
+    } else if(type == RECORD){
+        const char *link_tag[] = {"i2s", "algo", "rsp", "raw"};
+        audio_pipeline_link(handle->audio_pipeline, &link_tag[0], sizeof(link_tag) / sizeof(link_tag[0]));
+    }
+    return;
+}
+
+esp_err_t recorder_pipeline_stop(recorder_pipeline_handle_t pipeline)
+{
+    // ESP_RETURN_ON_FALSE(pipeline != NULL, ESP_FAIL, TAG, "recorder pipeline not initialized");
+    audio_pipeline_stop(pipeline->audio_pipeline);
+    audio_pipeline_wait_for_stop(pipeline->audio_pipeline);
+    return ESP_OK;
+};
 
 void recorder_pipeline_close(recorder_pipeline_handle_t pipeline)
 {
@@ -179,6 +204,117 @@ int recorder_pipeline_get_default_read_size(recorder_pipeline_handle_t pipeline)
     // 20ms
     return 320;
 };
+
+int local_recorder_pipeline_get_default_read_size(recorder_pipeline_handle_t pipeline)
+{
+    #if defined (CONFIG_AUDIO_SUPPORT_OPUS_DECODER)
+        return 80;
+    #elif defined (CONFIG_AUDIO_SUPPORT_AAC_DECODER)
+        return 512;
+    #elif defined (CONFIG_AUDIO_SUPPORT_G711A_DECODER)
+        return 160;
+    #endif
+    return 1920;
+};
+
+
+static audio_element_handle_t create_record_encoder_stream(void)
+{
+    audio_element_handle_t encoder_stream = NULL;
+#if defined (CONFIG_AUDIO_SUPPORT_OPUS_DECODER)
+    raw_opus_enc_config_t opus_cfg = RAW_OPUS_ENC_CONFIG_DEFAULT();
+    opus_cfg.sample_rate        = SAMPLE_RATE;
+    opus_cfg.channel            = CHANNEL;
+    opus_cfg.bitrate            = BIT_RATE;
+    opus_cfg.complexity         = COMPLEXITY;
+    encoder_stream = raw_opus_encoder_init(&opus_cfg);
+#elif defined (CONFIG_AUDIO_SUPPORT_AAC_DECODER)
+    aac_encoder_cfg_t aac_cfg = DEFAULT_AAC_ENCODER_CONFIG();
+    aac_cfg.sample_rate        = SAMPLE_RATE;
+    aac_cfg.channel            = CHANNEL;
+    aac_cfg.bitrate            = BIT_RATE;
+    encoder_stream = aac_encoder_init(&aac_cfg);
+#elif defined (CONFIG_AUDIO_SUPPORT_G711A_DECODER)
+    g711_encoder_cfg_t g711_cfg = DEFAULT_G711_ENCODER_CONFIG();
+    encoder_stream = g711_encoder_init(&g711_cfg);
+#endif
+    return encoder_stream;
+}
+
+static recorder_sr_cfg_t get_default_audio_record_config(void)
+{
+    recorder_sr_cfg_t recorder_sr_cfg = DEFAULT_RECORDER_SR_CFG(AUDIO_ADC_INPUT_CH_FORMAT, "model", AFE_TYPE_SR, AFE_MODE_LOW_COST);
+    recorder_sr_cfg.multinet_init = false;
+    recorder_sr_cfg.fetch_task_core = 0;
+    recorder_sr_cfg.feed_task_core = 1;
+    recorder_sr_cfg.afe_cfg->vad_mode = VAD_MODE_3;
+    recorder_sr_cfg.afe_cfg->memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
+    recorder_sr_cfg.afe_cfg->agc_mode = AFE_MN_PEAK_NO_AGC;
+    return recorder_sr_cfg;
+}
+
+
+
+static int input_cb_for_afe(int16_t *buffer, int buf_sz, void *user_ctx, TickType_t ticks)
+{
+
+#if CONFIG_ENABLE_RECORDER_DEBUG
+    aec_debug_data_write((char *)buffer, buf_sz);
+#endif // ENABLE_AEC_DEBUG
+    return raw_stream_read(s_recorder_pipeline->raw_reader, (char *)buffer, buf_sz);
+}
+
+void *audio_record_engine_init(recorder_pipeline_handle_t pipeline, rec_event_cb_t cb)
+{
+    recorder_sr_cfg_t recorder_sr_cfg = get_default_audio_record_config();
+#if defined (CONFIG_CONTINUOUS_CONVERSATION_MODE)
+    recorder_sr_cfg.afe_cfg->wakenet_init = false;
+    recorder_sr_cfg.afe_cfg->se_init = false;
+    recorder_sr_cfg.afe_cfg->vad_init = false;
+#endif // CONFIG_CONTINUOUS_CONVERSATION_MODE
+
+    recorder_encoder_cfg_t recorder_encoder_cfg = { 0 };
+
+#if defined (CONFIG_AUDIO_SUPPORT_G711A_DECODER)
+    rsp_filter_cfg_t filter_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
+    filter_cfg.src_ch = 1;
+    filter_cfg.src_rate = 16000;
+    filter_cfg.dest_ch = 1;
+    filter_cfg.dest_rate = 8000;
+    filter_cfg.complexity = 0;
+    filter_cfg.stack_in_ext = true;
+    filter_cfg.max_indata_bytes = 1024;
+    recorder_encoder_cfg.resample = rsp_filter_init(&filter_cfg);
+#endif // CONFIG_AUDIO_SUPPORT_G711A_DECODER
+
+    recorder_encoder_cfg.encoder = create_record_encoder_stream();
+
+    audio_rec_cfg_t cfg = AUDIO_RECORDER_DEFAULT_CFG();
+    cfg.read = (recorder_data_read_t)&input_cb_for_afe;
+    cfg.sr_handle = recorder_sr_create(&recorder_sr_cfg, &cfg.sr_iface);
+    cfg.event_cb = cb;
+    cfg.vad_off = 1000;
+    cfg.wakeup_end = 120000;
+
+#if defined (CONFIG_CONTINUOUS_CONVERSATION_MODE)
+    cfg.vad_start = 0;
+#endif // CONFIG_CONTINUOUS_CONVERSATION_MODE
+    cfg.encoder_handle = recorder_encoder_create(&recorder_encoder_cfg, &cfg.encoder_iface);
+    pipeline->recorder_encoder = cfg.encoder_handle;
+    pipeline->recorder_engine = audio_recorder_create(&cfg);
+#if defined (CONFIG_CONTINUOUS_CONVERSATION_MODE)
+    vTaskDelay(pdMS_TO_TICKS(200));
+    audio_recorder_trigger_start(pipeline->recorder_engine);
+#endif // CONFIG_CONTINUOUS_CONVERSATION_MODE
+    return pipeline->recorder_engine;
+}
+
+
+void audio_record_engine_deinit(recorder_pipeline_handle_t pipeline)
+{
+    audio_recorder_destroy(pipeline->recorder_engine);
+    recorder_encoder_destroy(pipeline->recorder_encoder);
+}
 
 audio_element_handle_t recorder_pipeline_get_raw_reader(recorder_pipeline_handle_t pipeline)
 {

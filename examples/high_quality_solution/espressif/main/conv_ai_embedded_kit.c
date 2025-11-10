@@ -43,14 +43,12 @@
 #include "network.h"
 #include "echoear_app/iot_display.h"
 #include "echoear_app/conv_ai.h"
-#include "audio_processor.h"
+
 #include "echoear_app/iot_wakeup.h"
 #include "driver/gpio.h"
 #include "board.h"
 #include  "esp_mac.h"
 #define STATS_TASK_PRIO 5
-
-#include "echoear_app/audio_capture.h"
 
 static const char *TAG = "VolcConvAI";
 extern audio_vol_handle vol_handle;
