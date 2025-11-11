@@ -6,6 +6,7 @@
 #include <string.h>
 #include "conv_ai.h"
 
+#include "volc_hal.h"
 #include "volc_hal_capture.h"
 #include "volc_hal_display.h"
 
@@ -56,7 +57,7 @@ static engine_context_t engine_ctx = {0};
 static bool is_ready = false;
 
 static volatile bool is_interrupt = false;
-extern volc_display_t global_display;
+static volc_hal_display_t global_display = NULL;
 
 void conv_ai_task_stop() {
     is_interrupt =  true;
@@ -140,11 +141,11 @@ static void on_subtitle_message_received(const cJSON* root) {
             // print_string(sub + sub_offset -1);
             if(cJSON_IsTrue(definite_obj)){
                 sub_offset = sub_offset == 0 ? 0 : sub_offset -1;
-                volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,sub + sub_offset);
+                volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,sub + sub_offset);
                 sub_offset = 0;
             } else if(strlen(sub) - sub_offset > 18){
                 sub_offset = sub_offset == 0 ? 0 : sub_offset -1;
-                volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,sub + sub_offset);
+                volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,sub + sub_offset);
                 if(strlen(sub) - sub_offset > 36){
                     sub_offset = strlen(sub);
                 }
@@ -285,7 +286,7 @@ void conv_ai_init(){
     }
 }
 
-void audio_capture_cb(volc_hal_capture_t capture, const void* data, int len, volc_frame_info_t* frame_info){
+void audio_capture_cb(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info){
     volc_audio_frame_info_t info = {0};
     
     info.commit = false;
@@ -298,8 +299,13 @@ void audio_capture_cb(volc_hal_capture_t capture, const void* data, int len, vol
 
 void conv_ai_task(void *pvParameters)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
+    global_display = g_hal_context->display_handle;
     int error = 0;
-    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话创建中");
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话创建中");
 
     // step 1: start audio capture & play
     volc_hal_capture_config_t  capture_audio_config  = {0};
@@ -314,7 +320,7 @@ void conv_ai_task(void *pvParameters)
     
     engine_ctx.player_pipeline = player_pipeline;
 
-    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话连接中");
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话连接中");
 
     // step 2: start ai agent
     volc_opt_t opt = {
@@ -328,8 +334,8 @@ void conv_ai_task(void *pvParameters)
         volc_destroy(engine_ctx.engine);
         return;
     }
-    volc_capture_start(audio_capture_);
-    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话中");
+    volc_hal_capture_start(audio_capture_);
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话中");
 
     while(!is_interrupt){
         sleep(1);
@@ -343,7 +349,7 @@ void conv_ai_task(void *pvParameters)
     // step 4: stop audio play
     audio_player_destroy(player_pipeline);
     // memset(&engine_ctx,0,sizeof(engine_context_t));
-    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,"");
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,"");
     is_ready = false;
     is_interrupt =  false;
     volc_osal_thread_exit(NULL);

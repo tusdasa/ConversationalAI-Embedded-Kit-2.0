@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+#include "volc_hal.h"
 #include "volc_hal_player.h"
 #include "volc_osal.h"
 #include "audio_pipeline.h"
@@ -107,6 +108,10 @@ static audio_element_handle_t __create_player_decoder_stream(void)
 
 volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return NULL;
+    }
     volc_player_impl_t* impl = volc_osal_calloc(1, sizeof(volc_player_impl_t));
     mem_assert(impl);
     impl->media_type = config->media_type;
@@ -132,6 +137,7 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
             const char *link_tag[] = {"raw", "rsp", "i2s"};
 #endif
             audio_pipeline_link(impl->audio_player_config.audio_pipeline, &link_tag[0], sizeof(link_tag) / sizeof(link_tag[0]));
+            g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO] = (volc_hal_player_t)impl;
             break;
         case VOLC_MEDIA_TYPE_VIDEO:
             // TODO: Add video player support
@@ -139,12 +145,15 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
         default:
             break;
     }
-
     return (volc_hal_player_t)impl;
 }
 
 void volc_hal_player_destroy(volc_hal_player_t player)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
     volc_player_impl_t* impl = (volc_player_impl_t*)player;
     if (impl == NULL) {
         return;
@@ -174,13 +183,14 @@ void volc_hal_player_destroy(volc_hal_player_t player)
                 audio_element_deinit(impl->audio_player_config.audio_decoder);
             }
             audio_pipeline_deinit(impl->audio_player_config.audio_pipeline);
+            g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO] = NULL;
+            break;
         case VOLC_MEDIA_TYPE_VIDEO:
             // TODO: Add video player support
             break;
         default:
             break;
     }
-    
     volc_osal_free(impl);
 }
 

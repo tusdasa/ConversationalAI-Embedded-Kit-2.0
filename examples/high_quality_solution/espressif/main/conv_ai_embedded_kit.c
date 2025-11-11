@@ -42,6 +42,7 @@
 #include "network.h"
 #include "echoear_app/conv_ai.h"
 
+#include "volc_hal.h"
 #include "volc_hal_display.h"
 
 #include "echoear_app/iot_wakeup.h"
@@ -60,10 +61,7 @@ extern int audio_vol;
  
 
 static recorder_pipeline_handle_t record_pipeline; 
-
 extern recorder_pipeline_handle_t wake_record_pipeline; 
-extern volc_display_t global_display;
-
 
 static  int wake_up_running = 1;
 
@@ -96,20 +94,6 @@ static void sys_monitor_task(void *pvParameters)
         // ESP_LOGI(TAG, "--------------------------------\n");
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
-}
-
-
-static void init_echoear_board_power(void)
-{
-    gpio_config_t io_conf;
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pin_bit_mask = BIT64(GPIO_NUM_9) | BIT64(GPIO_NUM_48);
-    io_conf.pull_down_en = 0;
-    io_conf.pull_up_en = 0;
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    gpio_config(&io_conf);
-    gpio_set_level(GPIO_NUM_9, 0);
-    gpio_set_level(GPIO_NUM_48, 1);
 }
 
 // static void button_event_cb_set(void *arg,void *data)
@@ -250,10 +234,9 @@ void  hal_level_init()
 void app_main(void)
 {
     // xTaskCreate(&sys_monitor_task, "sys_monitor_task", 4096, NULL, 5, NULL);
-    
-    init_echoear_board_power();
-    volc_display_config_t display_config = {0};
-    volc_display_create(&display_config);
+    volc_hal_init();
+    volc_hal_display_config_t display_config = {0};
+    volc_hal_display_create(&display_config);
 
     // 打印mac地址
     /*
@@ -304,9 +287,14 @@ void app_main(void)
 
     hal_level_init();
     // iot_wakeup_register_cb((iot_wakeup_cb)rec_engine_cb);
-    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
+    volc_hal_display_t global_display = g_hal_context->display_handle;
     extern lv_image_dsc_t img_app_pos; 
-    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
     
     // while(1){
     //     sleep(5);

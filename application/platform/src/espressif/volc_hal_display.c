@@ -1,6 +1,7 @@
 // Copyright (2025) Beijing Volcano Engine Technology Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "volc_hal.h"
 #include "volc_hal_display.h"
 #include "lvgl.h"
 #include "bsp/echoear.h"
@@ -22,7 +23,7 @@ typedef struct volc_hal_display_impl {
     lv_timer_t* text_timer;
     char subtitle_texts[64];
     char status_texts[64];
-    volatile bool            is_init;
+    volatile bool   is_init;
 } volc_hal_display_impl_t;
 
 static volc_hal_display_impl_t* global_display_impl = NULL;
@@ -32,6 +33,11 @@ extern lv_font_t echoear_font_16;
 
 static void __subtitle_update_cb(lv_timer_t* timer)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
+    volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)(g_hal_context->display_handle);
     if(global_display_impl && global_display_impl->is_init){
         lv_label_set_text(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE], global_display_impl->subtitle_texts);
         lv_label_set_text(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS], global_display_impl->status_texts);
@@ -40,7 +46,7 @@ static void __subtitle_update_cb(lv_timer_t* timer)
     }
 }
 
-static void __status_obj_init()
+static void __status_obj_init(volc_hal_display_impl_t* global_display_impl)
 {
     if(global_display_impl && global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS] == NULL){
         global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS] = lv_label_create(global_display_impl->screen);
@@ -50,7 +56,7 @@ static void __status_obj_init()
     }
 }
 
-static void __subtitle_obj_init()
+static void __subtitle_obj_init(volc_hal_display_impl_t* global_display_impl)
 {
     if(global_display_impl && global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE] == NULL){
         global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE] = lv_label_create(global_display_impl->screen);
@@ -63,7 +69,7 @@ static void __subtitle_obj_init()
     }
 }
 
-static void __main_obj_init()
+static void __main_obj_init(volc_hal_display_impl_t* global_display_impl)
 {
     if(global_display_impl && global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] == NULL){
         global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] = lv_img_create(global_display_impl->screen);
@@ -75,51 +81,68 @@ static void __main_obj_init()
 
 volc_hal_display_t volc_hal_display_create(volc_hal_display_config_t* config)
 {
-    if(global_display_impl == NULL){
-        global_display_impl = (volc_hal_display_impl_t*)volc_osal_calloc(1,sizeof(volc_hal_display_impl_t));
-        // init display
-        bsp_display_cfg_t cfg = {
-            .lvgl_port_cfg = {
-                .task_priority = LVGL_TASK_PRIORITY,
-                .task_stack = LVGL_TASK_STACK_SIZE,
-                .task_affinity = LVGL_TASK_CORE_ID,
-                .task_max_sleep_ms = LVGL_TASK_MAX_SLEEP_MS,
-                .task_stack_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
-                .timer_period_ms = LVGL_TASK_TIMER_PERIOD_MS,
-            },
-            .buffer_size = BSP_LCD_H_RES * 50,
-            .double_buffer = true,
-            .flags = {
-                .buff_spiram = false,
-            // .default_dummy_draw = default_dummy_draw, // Avoid white screen during initialization
-            },
-    };
-        lv_disp_t *disp = bsp_display_start_with_config(&cfg);
-        // bsp_display_brightness_init();
-        bsp_display_backlight_on();
-        global_display_impl->screen = lv_scr_act();
-        __subtitle_obj_init();
-        __status_obj_init();
-        __main_obj_init();
-        global_display_impl->is_init = true;
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return NULL;
     }
-    global_display = global_display_impl;
-    return global_display_impl;
+
+    volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)volc_osal_calloc(1,sizeof(volc_hal_display_impl_t));
+    // init display
+    bsp_display_cfg_t cfg = {
+        .lvgl_port_cfg = {
+            .task_priority = LVGL_TASK_PRIORITY,
+            .task_stack = LVGL_TASK_STACK_SIZE,
+            .task_affinity = LVGL_TASK_CORE_ID,
+            .task_max_sleep_ms = LVGL_TASK_MAX_SLEEP_MS,
+            .task_stack_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
+            .timer_period_ms = LVGL_TASK_TIMER_PERIOD_MS,
+        },
+        .buffer_size = BSP_LCD_H_RES * 50,
+        .double_buffer = true,
+        .flags = {
+            .buff_spiram = false,
+        // .default_dummy_draw = default_dummy_draw, // Avoid white screen during initialization
+        },
+    };
+    lv_disp_t *disp = bsp_display_start_with_config(&cfg);
+    // bsp_display_brightness_init();
+    bsp_display_backlight_on();
+    global_display_impl->screen = lv_scr_act();
+    __subtitle_obj_init(global_display_impl);
+    __status_obj_init(global_display_impl);
+    __main_obj_init(global_display_impl);
+    global_display_impl->is_init = true;
+
+    g_hal_context->display_handle = (volc_hal_display_t)global_display_impl;
+    return (volc_hal_display_t)global_display_impl;
 }
 
 void volc_hal_display_destroy(volc_hal_display_t display)
 {
-
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
+    volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)display;
     if(global_display_impl && global_display_impl->is_init){
         global_display_impl->is_init = false;
         lv_timer_del(global_display_impl->text_timer);
         lv_obj_del(global_display_impl->screen);
     }
+    volc_osal_free(global_display_impl);
+    global_display_impl = NULL;
+    g_hal_context->display_handle = NULL;
     return;
 }
 
 int volc_hal_display_set_content(volc_hal_display_t display, volc_hal_display_obj_e obj, volc_hal_display_type_e type, const void* content)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return -1;
+    }
+    volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)(g_hal_context->display_handle);
+    
     if(obj == VOLC_DISPLAY_OBJ_STATUS && type == VOLC_DISPLAY_TEXT){
         memset(global_display_impl->status_texts, 0, 64);
         int count = strlen(content) >= 63 ? 63 : strlen(content);
@@ -136,4 +159,5 @@ int volc_hal_display_set_content(volc_hal_display_t display, volc_hal_display_ob
         lv_img_set_src(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], img_app_pos);
         lv_obj_remove_flag(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] ,LV_OBJ_FLAG_HIDDEN);
     }
+    return 0;
 }

@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+#include "volc_hal.h"
 #include "volc_hal_button.h"
 #include "iot_button.h"
 #include "button_gpio.h"
@@ -36,6 +37,10 @@ static void __button_event_cb_adapter(void* btn_handle, void* usr_data)
 
 volc_hal_button_t volc_hal_button_create(volc_hal_button_config_t* config)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return NULL;
+    }
     if (NULL == config) {
         LOGW("invalid input config %p", config);
         return NULL;
@@ -99,12 +104,17 @@ volc_hal_button_t volc_hal_button_create(volc_hal_button_config_t* config)
 
         iot_button_register_cb(button_impl->btn, events[i], __button_event_cb_adapter, adapter_data);
     }
-
+    g_hal_context->button_handle = (volc_hal_button_t)button_impl;
+    
     return (volc_hal_button_t)button_impl;
 }
 
 void volc_hal_button_destroy(volc_hal_button_t button)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
     if (NULL == button) {
         LOGW("invalid input button %p", button);
         return;
@@ -116,5 +126,6 @@ void volc_hal_button_destroy(volc_hal_button_t button)
         button_impl->btn = NULL;
     }
 
+    g_hal_context->button_handle = NULL;
     volc_osal_free(button_impl);
 }

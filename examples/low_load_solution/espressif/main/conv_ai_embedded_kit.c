@@ -40,6 +40,7 @@
 
 // #include "iot_button.h"
 // #include "button_gpio.h"
+#include "volc_hal.h"
 #include "volc_hal_button.h"
 #define STATS_TASK_PRIO 5
 
@@ -74,19 +75,6 @@ static engine_context_t engine_ctx = {0};
 static bool is_ready = false;
 
 static volc_hal_button_t button = NULL;
-
-static void init_echoear_board_power(void)
-{
-    gpio_config_t io_conf;
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pin_bit_mask = BIT64(GPIO_NUM_9) | BIT64(GPIO_NUM_48);
-    io_conf.pull_down_en = 0;
-    io_conf.pull_up_en = 0;
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    gpio_config(&io_conf);
-    gpio_set_level(GPIO_NUM_9, 0);
-    gpio_set_level(GPIO_NUM_48, 1);
-}
 
 static void _on_volc_event(volc_engine_t handle, volc_event_t *event, void *user_data)
 {
@@ -366,7 +354,7 @@ static void conv_ai_task(void *pvParameters)
 
 void app_main(void)
 {
-    init_echoear_board_power();
+    volc_hal_init();
     /* Initialize the default event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_log_level_set("*", ESP_LOG_INFO);

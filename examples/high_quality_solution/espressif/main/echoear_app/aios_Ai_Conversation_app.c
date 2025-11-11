@@ -5,10 +5,10 @@
 #include "volc_hal_display.h"
 
 #include "common_def.h"
+
+#include "volc_hal.h"
 #include "volc_osal.h"
 #include <stdio.h>
-
-extern volc_display_t global_display;
 
 /* data structure ----------------------------------------------------------- */
 typedef struct aios_Ai_Conversation_app_tag {
@@ -43,12 +43,17 @@ static aios_ret_t state_init(aios_Ai_Conversation_app_t * const me, aios_event_t
 
 static aios_ret_t state_conversation(aios_Ai_Conversation_app_t * const me, aios_event_t const * const e)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return AIOS_Ret_NotHandled;
+    }
+    volc_hal_display_t global_display = g_hal_context->display_handle;
     switch ((int)e->id) {
         case Event_Ai_Conversation_Start:
             // printf("state_conversation Event_Ai_Conversation_Start\n");
             if(me->conv_thread_id == NULL){
                 volc_osal_thread_param_t param = {0};
-                volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话启动中");
+                volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话启动中");
                 snprintf(param.name, sizeof(param.name), "%s", "conv_ai");
                 param.stack_size = 8*1024;
                 param.priority = 5;
@@ -64,7 +69,6 @@ static aios_ret_t state_conversation(aios_Ai_Conversation_app_t * const me, aios
             // printf("state_conversation Event_QUIT\n");
             if(me->conv_thread_id != NULL){
                 sleep(5);
-                printf("over \n");
                 conv_ai_task_stop();
                 me->conv_thread_id = NULL;
                 // printf("conv_ai_task_stop \n");
@@ -72,7 +76,7 @@ static aios_ret_t state_conversation(aios_Ai_Conversation_app_t * const me, aios
             sleep(3);
             iot_wakeup_init(NULL);
             iot_wakeup_start();
-            volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
+            volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
             return AIOS_Ret_Handled;
             //return AIOS_TRAN(state_on);
         default:

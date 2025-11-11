@@ -5,6 +5,7 @@
 #include "audio_common.h"
 #include "audio_sys.h"
 #include "board.h"
+#include "volc_hal.h"
 #include "volc_hal_capture.h"
 #include "volc_osal.h"
 #include "audio_pipeline.h"
@@ -188,6 +189,10 @@ static audio_element_handle_t create_record_algo_stream(void)
 
 volc_hal_capture_t volc_hal_capture_create(volc_hal_capture_config_t* config)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return NULL;
+    }
     volc_hal_capture_impl_t *capture = (volc_hal_capture_impl_t *)volc_osal_calloc(1, sizeof(volc_hal_capture_impl_t));
 
     // config
@@ -228,6 +233,7 @@ volc_hal_capture_t volc_hal_capture_create(volc_hal_capture_config_t* config)
             mem_assert(ret == 0);
             capture->semaphore = volc_osal_sem_create();
             mem_assert(capture->semaphore);
+            g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO] = (volc_hal_capture_t)capture;
             break;
         case VOLC_MEDIA_TYPE_VIDEO:
             // TODO: Add video capture support
@@ -275,6 +281,11 @@ int volc_hal_capture_stop(volc_hal_capture_t capture)
 
 void volc_hal_capture_destroy(volc_hal_capture_t capture)
 {
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
+
     volc_hal_capture_impl_t *impl = (volc_hal_capture_impl_t *)capture;
     if (!impl) {
         return;
@@ -319,6 +330,7 @@ void volc_hal_capture_destroy(volc_hal_capture_t capture)
                 audio_pipeline_deinit(impl->audio_capture_config.audio_pipeline);
                 impl->audio_capture_config.audio_pipeline = NULL;
             }
+            g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO] = NULL;
             break;
         case VOLC_MEDIA_TYPE_VIDEO:
             // TODO: Add video capture support
