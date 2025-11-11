@@ -4,6 +4,7 @@
 #include "volc_hal.h"
 
 int volc_hal_init(void) {
+    
     return 0;
 }
 

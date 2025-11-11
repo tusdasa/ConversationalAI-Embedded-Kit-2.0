@@ -7,11 +7,12 @@
 #include "conv_ai.h"
 
 #include "volc_hal_capture.h"
+#include "volc_hal_display.h"
+
 #include "common_def.h"
 
 
 #include "cJSON.h"
-#include "iot_display.h"
 #include "audio_vol.h"
 #define CONV_AI_CONFIG_FORMAT "{\
   \"ver\": 1,\
@@ -55,6 +56,7 @@ static engine_context_t engine_ctx = {0};
 static bool is_ready = false;
 
 static volatile bool is_interrupt = false;
+extern volc_display_t global_display;
 
 void conv_ai_task_stop() {
     is_interrupt =  true;
@@ -84,7 +86,6 @@ static void _on_volc_conversation_status(volc_engine_t handle, volc_conv_status_
     printf("conversation status changed: %d\n", status);
 }
 
-int audio_cnt = 0;
 static void _on_volc_audio_data(volc_engine_t handle, const void *data_ptr, size_t data_len, volc_audio_frame_info_t *info_ptr, void *user_data)
 {
     int error = 0;
@@ -139,11 +140,11 @@ static void on_subtitle_message_received(const cJSON* root) {
             // print_string(sub + sub_offset -1);
             if(cJSON_IsTrue(definite_obj)){
                 sub_offset = sub_offset == 0 ? 0 : sub_offset -1;
-                iot_display_string(sub + sub_offset);
+                volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,sub + sub_offset);
                 sub_offset = 0;
             } else if(strlen(sub) - sub_offset > 18){
                 sub_offset = sub_offset == 0 ? 0 : sub_offset -1;
-                iot_display_string(sub + sub_offset);
+                volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,sub + sub_offset);
                 if(strlen(sub) - sub_offset > 36){
                     sub_offset = strlen(sub);
                 }
@@ -298,7 +299,7 @@ void audio_capture_cb(volc_capture_t capture, const void* data, int len, volc_fr
 void conv_ai_task(void *pvParameters)
 {
     int error = 0;
-    iot_display_string("ai对话创建中");
+    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话创建中");
 
     // step 1: start audio capture & play
     volc_capture_config_t  capture_audio_config  = {0};
@@ -313,7 +314,7 @@ void conv_ai_task(void *pvParameters)
     
     engine_ctx.player_pipeline = player_pipeline;
 
-    iot_display_string("ai对话连接中");
+    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话连接中");
 
     // step 2: start ai agent
     volc_opt_t opt = {
@@ -328,6 +329,7 @@ void conv_ai_task(void *pvParameters)
         return;
     }
     volc_capture_start(audio_capture_);
+    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话中");
 
     while(!is_interrupt){
         sleep(1);
@@ -341,6 +343,7 @@ void conv_ai_task(void *pvParameters)
     // step 4: stop audio play
     audio_player_destroy(player_pipeline);
     // memset(&engine_ctx,0,sizeof(engine_context_t));
+    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,"");
     is_ready = false;
     is_interrupt =  false;
     volc_osal_thread_exit(NULL);

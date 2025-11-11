@@ -13,7 +13,6 @@
 #include "echoear_app/aios_ai_conversation_app.h"
 #include "echoear_app/common_def.h"
 #include "echoear_app/audio_vol.h"
-
 #include "echoear_app/button_event.h"
 #include "iot_button.h"
 
@@ -41,23 +40,30 @@
 #include "pipeline.h"
 #include "cJSON.h"
 #include "network.h"
-#include "echoear_app/iot_display.h"
 #include "echoear_app/conv_ai.h"
+
+#include "volc_hal_display.h"
 
 #include "echoear_app/iot_wakeup.h"
 #include "driver/gpio.h"
 #include "board.h"
 #include  "esp_mac.h"
+
+#include "lvgl.h"
+
+
 #define STATS_TASK_PRIO 5
 
 static const char *TAG = "VolcConvAI";
 extern audio_vol_handle vol_handle;
 extern int audio_vol;
-
+ 
 
 static recorder_pipeline_handle_t record_pipeline; 
 
 extern recorder_pipeline_handle_t wake_record_pipeline; 
+extern volc_display_t global_display;
+
 
 static  int wake_up_running = 1;
 
@@ -246,7 +252,8 @@ void app_main(void)
     // xTaskCreate(&sys_monitor_task, "sys_monitor_task", 4096, NULL, 5, NULL);
     
     init_echoear_board_power();
-    iot_display_init();
+    volc_display_config_t display_config = {0};
+    volc_display_create(&display_config);
 
     // 打印mac地址
     /*
@@ -297,7 +304,10 @@ void app_main(void)
 
     hal_level_init();
     // iot_wakeup_register_cb((iot_wakeup_cb)rec_engine_cb);
-    iot_display_string("请说 hi 乐鑫,启动ai对话");
+    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
+    extern lv_image_dsc_t img_app_pos; 
+    volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
+    
     // while(1){
     //     sleep(5);
     // }

@@ -15,8 +15,9 @@ typedef void* volc_display_t;
 
 typedef enum {
     VOLC_DISPLAY_OBJ_STATUS = 0, // Status display object
+    VOLC_DISPLAY_OBJ_MAIN,
     VOLC_DISPLAY_OBJ_SUBTITLE,   // Subtitle display object
-    VOLC_DISPLAY_OBJ_EMOJI,      // Emoji display object
+    // VOLC_DISPLAY_OBJ_EMOJI,      // Emoji display object
     VOLC_DISPLAY_OBJ_MAX,        // Maximum display object count
 } volc_display_obj_e;
 

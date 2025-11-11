@@ -2,11 +2,13 @@
 #include "aios_ai_conversation_app.h"
 #include "conv_ai.h"
 #include "iot_wakeup.h"
-#include "iot_display.h"
+#include "volc_hal_display.h"
 
 #include "common_def.h"
 #include "volc_osal.h"
 #include <stdio.h>
+
+extern volc_display_t global_display;
 
 /* data structure ----------------------------------------------------------- */
 typedef struct aios_Ai_Conversation_app_tag {
@@ -46,7 +48,7 @@ static aios_ret_t state_conversation(aios_Ai_Conversation_app_t * const me, aios
             // printf("state_conversation Event_Ai_Conversation_Start\n");
             if(me->conv_thread_id == NULL){
                 volc_osal_thread_param_t param = {0};
-                iot_display_string("ai对话启动中");
+                volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话启动中");
                 snprintf(param.name, sizeof(param.name), "%s", "conv_ai");
                 param.stack_size = 8*1024;
                 param.priority = 5;
@@ -70,7 +72,7 @@ static aios_ret_t state_conversation(aios_Ai_Conversation_app_t * const me, aios
             sleep(3);
             iot_wakeup_init(NULL);
             iot_wakeup_start();
-            iot_display_string("请说 hi 乐鑫,启动ai对话");
+            volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
             return AIOS_Ret_Handled;
             //return AIOS_TRAN(state_on);
         default:
