@@ -281,41 +281,51 @@ void volc_capture_destroy(volc_capture_t capture)
     }
 
     impl->is_running = false;
-    audio_pipeline_stop(impl->audio_capture_config.audio_pipeline);
-    audio_pipeline_wait_for_stop(impl->audio_capture_config.audio_pipeline);
-    audio_pipeline_terminate(impl->audio_capture_config.audio_pipeline);
-    if (impl->audio_capture_config.i2s_stream_reader)
-    {
-        audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.i2s_stream_reader);
-        audio_element_deinit(impl->audio_capture_config.i2s_stream_reader);
-    }
-    if (impl->audio_capture_config.audio_encoder) {
-        audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.audio_encoder);
-        audio_element_deinit(impl->audio_capture_config.audio_encoder);
-    }
-    if (impl->audio_capture_config.raw_reader)
-    {
-        audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.raw_reader);
-        audio_element_deinit(impl->audio_capture_config.raw_reader);
-    }
-    if (impl->audio_capture_config.rsp)
-    {
-        audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.rsp);
-        audio_element_deinit(impl->audio_capture_config.rsp);
-    }
-    if (impl->audio_capture_config.algo_aec)
-    {
-        audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.algo_aec);
-        audio_element_deinit(impl->audio_capture_config.algo_aec);
-    }
-    impl->user_data = NULL;
-    if (impl->semaphore) {
-        volc_osal_sem_destroy(impl->semaphore);
-        impl->semaphore = NULL;
-    }
-    if (impl->audio_capture_config.audio_pipeline) {
-        audio_pipeline_deinit(impl->audio_capture_config.audio_pipeline);
-        impl->audio_capture_config.audio_pipeline = NULL;
+    switch (impl->media_type) {
+        case VOLC_MEDIA_TYPE_AUDIO:
+            audio_pipeline_stop(impl->audio_capture_config.audio_pipeline);
+            audio_pipeline_wait_for_stop(impl->audio_capture_config.audio_pipeline);
+            audio_pipeline_terminate(impl->audio_capture_config.audio_pipeline);
+            if (impl->audio_capture_config.i2s_stream_reader)
+            {
+                audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.i2s_stream_reader);
+                audio_element_deinit(impl->audio_capture_config.i2s_stream_reader);
+            }
+            if (impl->audio_capture_config.audio_encoder) {
+                audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.audio_encoder);
+                audio_element_deinit(impl->audio_capture_config.audio_encoder);
+            }
+            if (impl->audio_capture_config.raw_reader)
+            {
+                audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.raw_reader);
+                audio_element_deinit(impl->audio_capture_config.raw_reader);
+            }
+            if (impl->audio_capture_config.rsp)
+            {
+                audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.rsp);
+                audio_element_deinit(impl->audio_capture_config.rsp);
+            }
+            if (impl->audio_capture_config.algo_aec)
+            {
+                audio_pipeline_unregister(impl->audio_capture_config.audio_pipeline, impl->audio_capture_config.algo_aec);
+                audio_element_deinit(impl->audio_capture_config.algo_aec);
+            }
+            impl->user_data = NULL;
+            if (impl->semaphore) {
+                volc_osal_sem_destroy(impl->semaphore);
+                impl->semaphore = NULL;
+            }
+            if (impl->audio_capture_config.audio_pipeline) {
+                audio_pipeline_deinit(impl->audio_capture_config.audio_pipeline);
+                impl->audio_capture_config.audio_pipeline = NULL;
+            }
+            break;
+        case VOLC_MEDIA_TYPE_VIDEO:
+            // TODO: Add video capture support
+            LOGE("Video capture is not supported yet");
+            break;
+        default:
+            break;
     }
     volc_osal_free(impl);
 }

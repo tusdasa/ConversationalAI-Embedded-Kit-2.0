@@ -21,3 +21,5 @@ dependencies:
     path: ../../../../application
     public: true
   espressif/button: =3.3.1
+  
+  lvgl/lvgl: "9.2.*"
