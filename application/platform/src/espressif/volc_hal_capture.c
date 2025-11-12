@@ -59,6 +59,7 @@ typedef struct {
 
 typedef struct {
     //TODO: add video capture config
+    void* video_capture_config;
 } volc_hal_video_capture_config_t;
 
 typedef struct {

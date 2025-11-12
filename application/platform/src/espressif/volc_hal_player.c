@@ -8,6 +8,7 @@
 #include "volc_osal.h"
 #include "audio_pipeline.h"
 #include "audio_element.h"
+#include "board.h"
 #include "raw_stream.h"
 #include "algorithm_stream.h"
 #include "filter_resample.h"
@@ -18,6 +19,7 @@
 #endif
 
 #define CHANNEL 1
+#define DEFAULT_AUDIO_VOL 50
 static const char *TAG = "volc_player";
 #define I2S_SAMPLE_RATE 16000
 #define ALGO_SAMPLE_RATE 16000
@@ -46,10 +48,12 @@ typedef struct {
     audio_element_handle_t audio_decoder;
     audio_element_handle_t rsp;
     audio_element_handle_t i2s_stream_writer;
+    audio_board_handle_t board_handle;
 } audio_player_config_t;
 
 typedef struct {
     //TODO: add video player config
+    void* video_player_config;
 } video_player_config_t;
 
 typedef struct {
@@ -106,6 +110,14 @@ static audio_element_handle_t __create_player_decoder_stream(void)
 #endif
 }
 
+static audio_board_handle_t __create_player_audio_board(void)
+{
+    audio_board_handle_t board_handle = audio_board_init();
+    audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+    audio_hal_set_volume(board_handle->audio_hal, DEFAULT_AUDIO_VOL);
+    return board_handle;
+}
+
 volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
 {
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
@@ -131,6 +143,8 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
             if (impl->audio_player_config.audio_decoder != NULL) {
                 audio_pipeline_register(impl->audio_player_config.audio_pipeline, impl->audio_player_config.audio_decoder, CODEC_NAME);
             }
+            impl->audio_player_config.board_handle = __create_player_audio_board();
+
 #if (CONFIG_VOLC_AUDIO_G711A)
             const char *link_tag[] = {"raw", CODEC_NAME, "rsp", "i2s"};
 #else
@@ -146,6 +160,19 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
             break;
     }
     return (volc_hal_player_t)impl;
+}
+
+int volc_hal_set_audio_player_volume(volc_hal_player_t player, int volume){
+    volc_player_impl_t* impl = (volc_player_impl_t*)player;
+    if (impl == NULL) {
+        return -1;
+    }
+    if(impl->media_type == VOLC_MEDIA_TYPE_AUDIO){
+        return audio_hal_set_volume(impl->audio_player_config.board_handle->audio_hal, volume);
+    } else if(impl->media_type == VOLC_MEDIA_TYPE_VIDEO){
+        LOGE("media type %d not supported set volume", impl->media_type);
+        return -1;
+    }
 }
 
 void volc_hal_player_destroy(volc_hal_player_t player)
@@ -182,6 +209,7 @@ void volc_hal_player_destroy(volc_hal_player_t player)
                 audio_pipeline_unregister(impl->audio_player_config.audio_pipeline, impl->audio_player_config.audio_decoder);
                 audio_element_deinit(impl->audio_player_config.audio_decoder);
             }
+            audio_board_deinit(impl->audio_player_config.board_handle);
             audio_pipeline_deinit(impl->audio_player_config.audio_pipeline);
             g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO] = NULL;
             break;
@@ -204,7 +232,6 @@ int volc_hal_player_start(volc_hal_player_t player)
     switch (impl->media_type) {
         case VOLC_MEDIA_TYPE_AUDIO:
             return audio_pipeline_run(impl->audio_player_config.audio_pipeline);
-            break;
         case VOLC_MEDIA_TYPE_VIDEO:
             // TODO: Add video player support
             break;
