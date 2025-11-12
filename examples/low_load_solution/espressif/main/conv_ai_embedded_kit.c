@@ -73,7 +73,7 @@ static char config_audio[256] = {0};
 static engine_context_t engine_ctx = {0};
 static bool is_ready = false;
 
-static volc_button_t button = NULL;
+static volc_hal_button_t button = NULL;
 
 static void init_echoear_board_power(void)
 {
@@ -199,7 +199,7 @@ void wait_for_time_sync(void)
     }
 }
 
-static void wifi_ap_event_cb(volc_button_t button, volc_button_event_e event, void* user_data)
+static void wifi_ap_event_cb(volc_hal_button_t button, volc_hal_button_event_e event, void* user_data)
 {
 
     if (event == VOLC_BUTTON_LONG_PRESS_HOLD) {
@@ -256,7 +256,7 @@ static int __volc_audio_codec(void) {
 #endif
 }
 
-void volc_capture_audio_data(volc_capture_t capture, const void* data, int len, volc_frame_info_t* frame_info)
+void volc_capture_audio_data(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info)
 {
     // TODO: add audio data processing logic
     volc_audio_frame_info_t info = {0};
@@ -270,12 +270,12 @@ static void conv_ai_task(void *pvParameters)
     int audio_codec = __volc_audio_codec();
     int error = 0;
     // step 1: start audio capture & play
-    volc_capture_config_t capture_config = {
+    volc_hal_capture_config_t capture_config = {
         .media_type = VOLC_MEDIA_TYPE_AUDIO,
         .data_cb = volc_capture_audio_data,
         .user_data = &engine_ctx,
     };
-    volc_capture_t pipeline = volc_capture_create(&capture_config);
+    volc_hal_capture_t pipeline = volc_hal_capture_create(&capture_config);
     volc_hal_player_config_t player_config = {
         .media_type = VOLC_MEDIA_TYPE_AUDIO,
     };
@@ -344,16 +344,16 @@ static void conv_ai_task(void *pvParameters)
     //         volc_send_audio_data(engine_ctx.engine, audio_buffer, read_size, &info);
     //     }
     // }
-    volc_capture_start(pipeline);
+    volc_hal_capture_start(pipeline);
     while (1)
     {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    volc_button_destroy(button);
+    volc_hal_button_destroy(button);
 
     // step 5: stop audio capture
-    volc_capture_destroy(pipeline);
+    volc_hal_capture_destroy(pipeline);
 
     // step 6: stop and destroy engine
     volc_stop(engine_ctx.engine);
@@ -385,12 +385,12 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
 
     // button
-    volc_button_config_t button_config = {0};
+    volc_hal_button_config_t button_config = {0};
     button_config.gpio_num = GPIO_NUM_0;
     button_config.active_level = 0;
     button_config.event_cb = wifi_ap_event_cb;
     button_config.user_data = &engine_ctx;
-    button = volc_button_create(&button_config);
+    button = volc_hal_button_create(&button_config);
     if (NULL == button) {
         ESP_LOGE(TAG, "Failed to create button!");
         return;

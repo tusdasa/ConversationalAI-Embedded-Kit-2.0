@@ -54,26 +54,26 @@ typedef struct {
     audio_element_handle_t   raw_reader;
     audio_element_handle_t   rsp;
     audio_element_handle_t   algo_aec;
-} audio_capture_config_t;
+} volc_hal_audio_capture_config_t;
 
 typedef struct {
     //TODO: add video capture config
-} video_capture_config_t;
+} volc_hal_video_capture_config_t;
 
 typedef struct {
     volc_media_type_e media_type;
     union {
-        audio_capture_config_t audio_capture_config;
-        video_capture_config_t video_capture_config;
+        volc_hal_audio_capture_config_t audio_capture_config;
+        volc_hal_video_capture_config_t video_capture_config;
     };
-    volc_capture_data_cb_t     data_cb; // Data callback function
+    volc_hal_capture_data_cb_t     data_cb; // Data callback function
     void*                      user_data;               // User data pointer
     volc_osal_tid_t            capture_thread;
     volc_osal_sem_t            semaphore;
     volatile bool              is_running;
-} volc_capture_impl_t;
+} volc_hal_capture_impl_t;
 
-static int __volc_capture_get_default_read_size(volc_capture_t capture)
+static int __volc_capture_get_default_read_size(volc_hal_capture_t capture)
 {
     // 60ms
 #if (CONFIG_VOLC_AUDIO_G711A)
@@ -85,7 +85,7 @@ static int __volc_capture_get_default_read_size(volc_capture_t capture)
 
 static void __volc_audio_capture_task(void *arg)
 {
-    volc_capture_impl_t *impl = (volc_capture_impl_t *)arg;
+    volc_hal_capture_impl_t *impl = (volc_hal_capture_impl_t *)arg;
     LOGI("capture task started...");
     audio_pipeline_run(impl->audio_capture_config.audio_pipeline);
     if (impl->semaphore) {
@@ -102,13 +102,13 @@ static void __volc_audio_capture_task(void *arg)
         int ret = raw_stream_read(impl->audio_capture_config.raw_reader, read_buf, read_size);
         if (ret > 0 && impl->data_cb) {
         #ifdef CONFIG_VOLC_AUDIO_G711A
-            volc_frame_info_t frame_info = {
+            volc_hal_frame_info_t frame_info = {
                 .data_type = VOLC_AUDIO_DATA_TYPE_G711A,
                 .user_data = impl->user_data,
             };
             impl->data_cb(impl, (const void *)read_buf, ret, &frame_info);
         #else
-            volc_frame_info_t frame_info = {
+            volc_hal_frame_info_t frame_info = {
                 .data_type = VOLC_AUDIO_DATA_TYPE_PCM,
                 .user_data = impl->user_data,
             };
@@ -116,7 +116,7 @@ static void __volc_audio_capture_task(void *arg)
         #endif
         }
     }
-    volc_capture_stop(impl);
+    volc_hal_capture_stop(impl);
     audio_pipeline_wait_for_stop(impl->audio_capture_config.audio_pipeline);
     if (impl->capture_thread) {
         volc_osal_thread_destroy(impl->capture_thread);
@@ -186,9 +186,9 @@ static audio_element_handle_t create_record_algo_stream(void)
     return element_algo;
 }
 
-volc_capture_t volc_capture_create(volc_capture_config_t* config)
+volc_hal_capture_t volc_hal_capture_create(volc_hal_capture_config_t* config)
 {
-    volc_capture_impl_t *capture = (volc_capture_impl_t *)volc_osal_calloc(1, sizeof(volc_capture_impl_t));
+    volc_hal_capture_impl_t *capture = (volc_hal_capture_impl_t *)volc_osal_calloc(1, sizeof(volc_hal_capture_impl_t));
 
     // config
     capture->is_running = false;
@@ -237,12 +237,12 @@ volc_capture_t volc_capture_create(volc_capture_config_t* config)
             break;
     }
     
-    return (volc_capture_t)capture;
+    return (volc_hal_capture_t)capture;
 }
 
-int volc_capture_start(volc_capture_t capture)
+int volc_hal_capture_start(volc_hal_capture_t capture)
 {
-    volc_capture_impl_t *impl = (volc_capture_impl_t *)capture;
+    volc_hal_capture_impl_t *impl = (volc_hal_capture_impl_t *)capture;
     
     if (impl->semaphore) {
         volc_osal_sem_post(impl->semaphore);
@@ -252,9 +252,9 @@ int volc_capture_start(volc_capture_t capture)
     return 0;
 }
 
-int volc_capture_stop(volc_capture_t capture)
+int volc_hal_capture_stop(volc_hal_capture_t capture)
 {
-    volc_capture_impl_t *impl = (volc_capture_impl_t *)capture;
+    volc_hal_capture_impl_t *impl = (volc_hal_capture_impl_t *)capture;
     if (!impl || !impl->is_running) {
         return 0;
     }
@@ -273,9 +273,9 @@ int volc_capture_stop(volc_capture_t capture)
     return 0;
 }
 
-void volc_capture_destroy(volc_capture_t capture)
+void volc_hal_capture_destroy(volc_hal_capture_t capture)
 {
-    volc_capture_impl_t *impl = (volc_capture_impl_t *)capture;
+    volc_hal_capture_impl_t *impl = (volc_hal_capture_impl_t *)capture;
     if (!impl) {
         return;
     }

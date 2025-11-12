@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-typedef void* volc_button_t;
+typedef void* volc_hal_button_t;
 
 typedef enum {
     VOLC_BUTTON_PRESS_DOWN = 0, // Button press down event
@@ -23,34 +23,34 @@ typedef enum {
     VOLC_BUTTON_LONG_PRESS_UP, // Button long press up event
     VOLC_BUTTON_PRESS_END, // Button press end event
     VOLC_BUTTON_EVENT_MAX, // Maximum number of button events
-} volc_button_event_e;
+} volc_hal_button_event_e;
 
-typedef void (*volc_button_event_cb_t)(volc_button_t button, volc_button_event_e event, void* user_data);
+typedef void (*volc_hal_button_event_cb_t)(volc_hal_button_t button, volc_hal_button_event_e event, void* user_data);
 
-typedef struct volc_button_config {
+typedef struct volc_hal_button_config {
     int gpio_num;                             // GPIO number of the button
     int active_level;                         // Active level of the button (0 or 1)
     int long_press_ms;                        // Long press threshold in milliseconds
     int short_press_ms;                       // Short press threshold in milliseconds
     int enable_power_save;                    // Whether to enable power save mode (0 or 1)
     void* user_data;                           // User data pointer
-    volc_button_event_cb_t event_cb;         // Button event callback function
-} volc_button_config_t;
+    volc_hal_button_event_cb_t event_cb;         // Button event callback function
+} volc_hal_button_config_t;
 
 /**
  * @brief Create a button instance
  * 
  * @param config Button configuration
- * @return volc_button_t Button instance pointer
+ * @return volc_hal_button_t Button instance pointer
  */
-volc_button_t volc_button_create(volc_button_config_t* config);
+volc_hal_button_t volc_hal_button_create(volc_hal_button_config_t* config);
 
 /**
  * @brief Destroy a button instance
  * 
  * @param button Button instance pointer
  */
-void volc_button_destroy(volc_button_t button);
+void volc_hal_button_destroy(volc_hal_button_t button);
 
 #ifdef __cplusplus
 }

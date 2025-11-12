@@ -15,7 +15,7 @@
 #define LVGL_TASK_TIMER_PERIOD_MS 50
 #define LVGL_TIMER_INTERVAL      500
 
-typedef struct volc_display_impl {
+typedef struct volc_hal_display_impl {
     lv_obj_t* screen; 
     lv_obj_t* display_obj[VOLC_DISPLAY_OBJ_MAX];
     //  use for display subtitle
@@ -23,10 +23,10 @@ typedef struct volc_display_impl {
     char subtitle_texts[64];
     char status_texts[64];
     volatile bool            is_init;
-} volc_display_impl_t;
+} volc_hal_display_impl_t;
 
-static volc_display_impl_t* global_display_impl = NULL;
-volc_display_t  global_display = NULL;
+static volc_hal_display_impl_t* global_display_impl = NULL;
+volc_hal_display_t  global_display = NULL;
 
 extern lv_font_t echoear_font_16;
 
@@ -73,10 +73,10 @@ static void __main_obj_init()
     }
 }
 
-volc_display_t volc_display_create(volc_display_config_t* config)
+volc_hal_display_t volc_hal_display_create(volc_hal_display_config_t* config)
 {
     if(global_display_impl == NULL){
-        global_display_impl = (volc_display_impl_t*)volc_osal_calloc(1,sizeof(volc_display_impl_t));
+        global_display_impl = (volc_hal_display_impl_t*)volc_osal_calloc(1,sizeof(volc_hal_display_impl_t));
         // init display
         bsp_display_cfg_t cfg = {
             .lvgl_port_cfg = {
@@ -107,7 +107,7 @@ volc_display_t volc_display_create(volc_display_config_t* config)
     return global_display_impl;
 }
 
-void volc_display_destroy(volc_display_t display)
+void volc_hal_display_destroy(volc_hal_display_t display)
 {
 
     if(global_display_impl && global_display_impl->is_init){
@@ -118,7 +118,7 @@ void volc_display_destroy(volc_display_t display)
     return;
 }
 
-int volc_display_set_content(volc_display_t display, volc_display_obj_e obj, volc_display_type_e type, const void* content)
+int volc_hal_display_set_content(volc_hal_display_t display, volc_hal_display_obj_e obj, volc_hal_display_type_e type, const void* content)
 {
     if(obj == VOLC_DISPLAY_OBJ_STATUS && type == VOLC_DISPLAY_TEXT){
         memset(global_display_impl->status_texts, 0, 64);

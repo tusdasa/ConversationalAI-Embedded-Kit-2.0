@@ -285,7 +285,7 @@ void conv_ai_init(){
     }
 }
 
-void audio_capture_cb(volc_capture_t capture, const void* data, int len, volc_frame_info_t* frame_info){
+void audio_capture_cb(volc_hal_capture_t capture, const void* data, int len, volc_frame_info_t* frame_info){
     volc_audio_frame_info_t info = {0};
     
     info.commit = false;
@@ -302,11 +302,11 @@ void conv_ai_task(void *pvParameters)
     volc_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话创建中");
 
     // step 1: start audio capture & play
-    volc_capture_config_t  capture_audio_config  = {0};
+    volc_hal_capture_config_t  capture_audio_config  = {0};
     capture_audio_config.media_type = VOLC_MEDIA_TYPE_AUDIO;
     capture_audio_config.data_cb = audio_capture_cb;
 
-    volc_capture_t audio_capture_ = volc_capture_create(&capture_audio_config);
+    volc_hal_capture_t audio_capture_ = volc_hal_capture_create(&capture_audio_config);
 
     
     audio_player_handle player_pipeline = audio_player_create(1,16000);
@@ -336,8 +336,8 @@ void conv_ai_task(void *pvParameters)
     }
 
     // step 3: stop and destroy engine
-    volc_capture_stop(audio_capture_);
-    volc_capture_destroy(audio_capture_);
+    volc_hal_capture_stop(audio_capture_);
+    volc_hal_capture_destroy(audio_capture_);
     volc_stop(engine_ctx.engine);
 
     // step 4: stop audio play

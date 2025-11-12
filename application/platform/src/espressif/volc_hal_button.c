@@ -11,8 +11,8 @@
 
 typedef struct {
     button_handle_t btn;
-    volc_button_config_t config;
-} volc_button_impl_t;
+    volc_hal_button_config_t config;
+} volc_hal_button_impl_t;
 
 static void __button_event_cb_adapter(void* btn_handle, void* usr_data)
 {
@@ -21,26 +21,26 @@ static void __button_event_cb_adapter(void* btn_handle, void* usr_data)
     }
 
     struct {
-        volc_button_impl_t* button_impl;
+        volc_hal_button_impl_t* button_impl;
         button_event_t event;
     } *adapter_data = (void*)usr_data;
 
     if (NULL != adapter_data->button_impl && NULL != adapter_data->button_impl->config.event_cb) {
         adapter_data->button_impl->config.event_cb(
-            (volc_button_t)adapter_data->button_impl,
-            (volc_button_event_e)adapter_data->event,
+            (volc_hal_button_t)adapter_data->button_impl,
+            (volc_hal_button_event_e)adapter_data->event,
             adapter_data->button_impl->config.user_data
         );
     }
 }
 
-volc_button_t volc_button_create(volc_button_config_t* config)
+volc_hal_button_t volc_hal_button_create(volc_hal_button_config_t* config)
 {
     if (NULL == config) {
         LOGW("invalid input config %p", config);
         return NULL;
     }
-    volc_button_impl_t *button_impl = (volc_button_impl_t *)volc_osal_malloc(sizeof(volc_button_impl_t));
+    volc_hal_button_impl_t *button_impl = (volc_hal_button_impl_t *)volc_osal_malloc(sizeof(volc_hal_button_impl_t));
     if (NULL == button_impl) {
         LOGE("memory alloc failed");
         return NULL;
@@ -69,7 +69,7 @@ volc_button_t volc_button_create(volc_button_config_t* config)
     }
 
     struct {
-        volc_button_impl_t* button_impl;
+        volc_hal_button_impl_t* button_impl;
         button_event_t event;
     } *adapter_data = NULL;
 
@@ -100,16 +100,16 @@ volc_button_t volc_button_create(volc_button_config_t* config)
         iot_button_register_cb(button_impl->btn, events[i], __button_event_cb_adapter, adapter_data);
     }
 
-    return (volc_button_t)button_impl;
+    return (volc_hal_button_t)button_impl;
 }
 
-void volc_button_destroy(volc_button_t button)
+void volc_hal_button_destroy(volc_hal_button_t button)
 {
     if (NULL == button) {
         LOGW("invalid input button %p", button);
         return;
     }
-    volc_button_impl_t *button_impl = (volc_button_impl_t *)button;
+    volc_hal_button_impl_t *button_impl = (volc_hal_button_impl_t *)button;
 
     if (NULL != button_impl->btn) {
         iot_button_delete(button_impl->btn);

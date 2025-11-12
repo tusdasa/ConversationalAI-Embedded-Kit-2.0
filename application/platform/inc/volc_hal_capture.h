@@ -12,35 +12,35 @@ extern "C" {
 /*
  * @brief Capture instance pointer
  */ 
-typedef void* volc_capture_t;
+typedef void* volc_hal_capture_t;
 
 typedef struct {
     volc_audio_data_type_e data_type; // Audio data type
     void* user_data;                  // User data pointer
-} volc_frame_info_t;
+} volc_hal_frame_info_t;
 
-typedef void (*volc_capture_data_cb_t)(volc_capture_t capture, const void* data, int len, volc_frame_info_t* frame_info);
+typedef void (*volc_hal_capture_data_cb_t)(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info);
 
-typedef struct volc_capture_config {
+typedef struct volc_hal_capture_config {
     volc_media_type_e media_type;   // Media type
-    volc_capture_data_cb_t data_cb; // Data callback function
+    volc_hal_capture_data_cb_t data_cb; // Data callback function
     void* user_data;               // User data pointer
-} volc_capture_config_t;
+} volc_hal_capture_config_t;
 
 /**
  * @brief Create a capture instance
  * 
  * @param config Capture configuration pointer
- * @return volc_capture_t Capture instance pointer
+ * @return volc_hal_capture_t Capture instance pointer
  */
-volc_capture_t volc_capture_create(volc_capture_config_t* config);
+volc_hal_capture_t volc_hal_capture_create(volc_hal_capture_config_t* config);
 
 /**
  * @brief Destroy a capture instance
  * 
  * @param capture Capture instance pointer
  */
-void volc_capture_destroy(volc_capture_t capture);
+void volc_hal_capture_destroy(volc_hal_capture_t capture);
 
 /**
  * @brief Start a capture instance
@@ -48,7 +48,7 @@ void volc_capture_destroy(volc_capture_t capture);
  * @param capture Capture instance pointer
  * @return int 0 if success, otherwise error code
  */
-int volc_capture_start(volc_capture_t capture);
+int volc_hal_capture_start(volc_hal_capture_t capture);
 
 /**
  * @brief Stop a capture instance
@@ -56,7 +56,7 @@ int volc_capture_start(volc_capture_t capture);
  * @param capture Capture instance pointer
  * @return int 0 if success, otherwise error code
  */
-int volc_capture_stop(volc_capture_t capture);
+int volc_hal_capture_stop(volc_hal_capture_t capture);
 
 #ifdef __cplusplus
 }
