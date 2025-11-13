@@ -47,7 +47,7 @@
 #define WEBSOCKET_TASK_STACK           (4 * 1024)
 #define WEBSOCKET_NETWORK_TIMEOUT_MS   (10 * 1000)
 #define WEBSOCKET_PINGPONG_TIMEOUT_SEC (540)
-#define WEBSOCKET_PING_INTERVAL_SEC    (10)
+#define WEBSOCKET_PING_INTERVAL_SEC    (3)
 #define WEBSOCKET_RECONNECT_TIMEOUT_MS (5 * 1000)
 #define WEBSOCKET_RX_RETRY_COUNT       (10)
 
@@ -1342,6 +1342,8 @@ void volc_ws_client_task(void* thread_param)
 
     client->run = true;
     client->state = VOLC_WS_STATE_INIT;
+
+    status_bits = PING_SENT_BIT;
     int read_select = 0;
     while (client->run) {
         switch ((int) client->state) {
