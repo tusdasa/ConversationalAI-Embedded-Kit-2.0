@@ -53,6 +53,7 @@ static const char *TAG = "AUDIO_PIPELINE";
 #endif
 
 #define CODEC_SAMPLE_RATE 8000
+#define ALGORITHM_INPUT_FORMAT "RM"
 
 static struct recorder_pipeline_t *s_recorder_pipeline = NULL;
 
@@ -110,6 +111,7 @@ static audio_element_handle_t create_record_algo_stream(void)
     algo_config.out_rb_size = 256;
     algo_config.algo_mask = ALGORITHM_STREAM_DEFAULT_MASK | ALGORITHM_STREAM_USE_AGC;
     algo_config.input_format = ALGORITHM_INPUT_FORMAT;
+    printf("zzzzzzzzzzzzzzz %s \n",ALGORITHM_INPUT_FORMAT);
     audio_element_handle_t element_algo = algo_stream_init(&algo_config);
     audio_element_set_music_info(element_algo, ALGO_SAMPLE_RATE, 1, 16);
     audio_element_set_input_timeout(element_algo, portMAX_DELAY);
@@ -140,12 +142,16 @@ recorder_pipeline_handle_t recorder_pipeline_open()
     s_recorder_pipeline = pipeline;
     // const char *link_tag[] = {"i2s", "algo", "rsp", "raw"};
     // audio_pipeline_link(pipeline->audio_pipeline, &link_tag[0], sizeof(link_tag) / sizeof(link_tag[0]));
+     printf("i2s %p algo %p rsp %p raw %p\n",pipeline->i2s_stream_reader,pipeline->algo_aec,pipeline->rsp,pipeline->raw_reader);
     return pipeline;
 }
 
 void recorder_pipeline_link_update(recorder_pipeline_handle_t handle,recorder_pipeline_type type){
     //  audio_pipeline_link 这个api会unlink掉pipeline 再重新link 
     if(type == WAKE_UP){
+        // audio_element_set_music_info(handle->i2s_stream_reader,16000,2,32);
+        // i2s_stream_set_clk(handle->i2s_stream_reader, 16000, ALGORITHM_STREAM_SAMPLE_BIT, 2);
+
         const char *link_tag[2] = {"i2s", "raw"};
         audio_pipeline_link(handle->audio_pipeline, &link_tag[0], 2);
     } else if(type == RECORD){
@@ -168,7 +174,7 @@ void recorder_pipeline_close(recorder_pipeline_handle_t pipeline)
     audio_pipeline_stop(pipeline->audio_pipeline);
     audio_pipeline_wait_for_stop(pipeline->audio_pipeline);
     audio_pipeline_terminate(pipeline->audio_pipeline);
-
+    return;
     if (pipeline->i2s_stream_reader)
     {
         audio_pipeline_unregister(pipeline->audio_pipeline, pipeline->i2s_stream_reader);
@@ -350,7 +356,7 @@ static audio_element_handle_t create_player_i2s_stream(void)
 #endif
     i2s_cfg.out_rb_size = 8 * 1024;
     i2s_cfg.buffer_len = 1416; // 708
-    i2s_stream_set_channel_type(&i2s_cfg, CHANNEL_FORMAT);
+    // i2s_stream_set_channel_type(&i2s_cfg, CHANNEL_FORMAT);
     audio_element_handle_t stream = i2s_stream_init(&i2s_cfg);
     // i2s_stream_set_clk(stream, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, CHANNEL_NUM);
     // 喵伴

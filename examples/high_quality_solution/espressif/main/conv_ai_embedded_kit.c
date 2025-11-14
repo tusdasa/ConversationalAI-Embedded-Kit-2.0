@@ -44,6 +44,8 @@
 
 #include "volc_hal.h"
 #include "volc_hal_display.h"
+#include "volc_hal_capture.h"
+
 
 #include "echoear_app/iot_wakeup.h"
 #include "driver/gpio.h"
@@ -212,6 +214,8 @@ static void wifi_ap_event_cb(void *arg, void *data)
     }
 }
 
+// extern void audio_capture_cb(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info);
+
 void  hal_level_init()
 {
 
@@ -222,8 +226,21 @@ void  hal_level_init()
 
     vol_handle = audio_vol_handle_create();
     set_audio_val(vol_handle,audio_vol);
+
+
     iot_wakeup_init((iot_wakeup_cb)rec_engine_cb);
     iot_wakeup_start();
+
+    vol_handle = audio_vol_handle_create();
+    set_audio_val(vol_handle,audio_vol);
+    volc_hal_capture_config_t config = {0};
+    config.media_type = VOLC_MEDIA_TYPE_AUDIO;
+    config.data_cb = audio_capture_cb;
+    config.audio_wakeup_cb = (volc_hal_audio_wakeup_cb)rec_engine_cb;
+    volc_hal_capture_t capture = volc_hal_capture_create(&config);
+
+    // volc_hal_capture_start(capture,VOLC_AUDIO_MODE_WAKEUP);
+
 
     button_init();
     button_register_cb(6, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);
@@ -294,7 +311,7 @@ void app_main(void)
     volc_hal_display_t global_display = g_hal_context->display_handle;
     extern lv_image_dsc_t img_app_pos; 
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
-    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
+    // volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
     
     // while(1){
     //     sleep(5);

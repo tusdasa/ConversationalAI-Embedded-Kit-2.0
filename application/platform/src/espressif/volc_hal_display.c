@@ -74,7 +74,7 @@ static void __main_obj_init(volc_hal_display_impl_t* global_display_impl)
     if(global_display_impl && global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] == NULL){
         global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] = lv_img_create(global_display_impl->screen);
         //  size需要调整
-        lv_obj_set_size(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], 300, 300);
+        lv_obj_set_size(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], 250, 250);
         lv_obj_align(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], LV_ALIGN_CENTER, 0, 0);
     }
 }

@@ -1,5 +1,4 @@
 #include "volc_conv_ai.h"
-#include "audio_player.h"
 #include "volc_osal.h"
 #include "iot_local_function_list.h"
 #include <stdio.h>
@@ -8,6 +7,7 @@
 
 #include "volc_hal.h"
 #include "volc_hal_capture.h"
+#include "volc_hal_player.h"
 #include "volc_hal_display.h"
 
 #include "common_def.h"
@@ -37,7 +37,6 @@
     },\
   \"params\":[\
       \"{\\\"debug\\\":{\\\"log_to_console\\\":1}}\",\
-      \"{\\\"audio\\\":{\\\"codec\\\":{\\\"internal\\\":{\\\"enable\\\":1}}}}\",\
       \"{\\\"rtc\\\":{\\\"access\\\":{\\\"concurrent_requests\\\":1}}}\",\
       \"{\\\"rtc\\\":{\\\"ice\\\":{\\\"concurrent_agents\\\":1}}}\",\
       \"{\\\"audio\\\":{\\\"codec\\\":{\\\"pcma\\\":{\\\"s_samples_per_frame\\\":480}}}}\"\
@@ -47,7 +46,7 @@
 
 typedef struct
 {
-    audio_player_handle player_pipeline;
+    volc_hal_player_t player_pipeline;
     volc_event_handler_t volc_event_handler;
     volc_engine_t engine;
 } engine_context_t;
@@ -101,7 +100,7 @@ static void _on_volc_audio_data(volc_engine_t handle, const void *data_ptr, size
         printf("player pipeline is NULL\n");
         return;
     }
-    play_audio(demo->player_pipeline, data_ptr, data_len);
+    volc_hal_player_play_data(demo->player_pipeline, data_ptr, data_len);
 }
 
 static void _on_volc_video_data(volc_engine_t handle, const void *data_ptr, size_t data_len, volc_video_frame_info_t *info_ptr, void *user_data)
@@ -151,7 +150,7 @@ static void on_subtitle_message_received(const cJSON* root) {
                 }
             }
             // printf("%s %d\n",sub,strlen(sub));
-                // printf("subtitle:%s:%s \n", cJSON_GetStringValue(user_id_obj), cJSON_GetStringValue(text_obj));
+            // printf("subtitle:%s:%s \n", cJSON_GetStringValue(user_id_obj), cJSON_GetStringValue(text_obj));
         }
     }
 }
@@ -308,16 +307,18 @@ void conv_ai_task(void *pvParameters)
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话创建中");
 
     // step 1: start audio capture & play
-    volc_hal_capture_config_t  capture_audio_config  = {0};
-    capture_audio_config.media_type = VOLC_MEDIA_TYPE_AUDIO;
-    capture_audio_config.data_cb = audio_capture_cb;
+    // config.audio_wakeup_cb = (volc_hal_audio_wakeup_cb)rec_engine_cb;
+    // volc_hal_capture_t audio_capture_ = volc_hal_capture_create(&config);
+    volc_hal_capture_t audio_capture_ = g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO];
+    volc_hal_capture_start(audio_capture_,VOLC_AUDIO_MODE_CAPTURE);
 
-    volc_hal_capture_t audio_capture_ = volc_hal_capture_create(&capture_audio_config);
 
-    
-    audio_player_handle player_pipeline = audio_player_create(1,16000);
-    audio_player_init(player_pipeline);
-    
+    volc_hal_player_config_t player_config = {0};
+    player_config.media_type = VOLC_MEDIA_TYPE_AUDIO;
+    volc_hal_player_t player_pipeline = volc_hal_player_create(&player_config);
+    volc_hal_player_start(player_pipeline);
+
+
     engine_ctx.player_pipeline = player_pipeline;
 
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话连接中");
@@ -334,7 +335,6 @@ void conv_ai_task(void *pvParameters)
         volc_destroy(engine_ctx.engine);
         return;
     }
-    volc_hal_capture_start(audio_capture_);
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话中");
 
     while(!is_interrupt){
@@ -343,11 +343,11 @@ void conv_ai_task(void *pvParameters)
 
     // step 3: stop and destroy engine
     volc_hal_capture_stop(audio_capture_);
-    volc_hal_capture_destroy(audio_capture_);
+    // volc_hal_capture_destroy(audio_capture_);
     volc_stop(engine_ctx.engine);
 
     // step 4: stop audio play
-    audio_player_destroy(player_pipeline);
+    volc_hal_player_destroy(player_pipeline);
     // memset(&engine_ctx,0,sizeof(engine_context_t));
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,"");
     is_ready = false;

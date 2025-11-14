@@ -4,6 +4,8 @@
 #include "iot_wakeup.h"
 #include "common_def.h"
 #include <stdio.h>
+#include "volc_hal.h"
+#include "volc_hal_capture.h"
 
 
 // #include "event_def.h"
@@ -47,6 +49,11 @@ static aios_ret_t state_wait_app_event(aios_app_manager_t * const me, aios_event
 
         case Event_Ai_Conversation:
             printf("Event_Ai_Conversation\n");
+             volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+            if(g_hal_context == NULL){
+                return AIOS_Ret_NotHandled;
+            }
+            // volc_hal_capture_stop(g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO]);
             iot_wakeup_stop();
             iot_wakeup_deinit();
             aios_event_pub(Event_Ai_Conversation_Start,NULL,NULL);

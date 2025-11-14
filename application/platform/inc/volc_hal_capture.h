@@ -19,11 +19,18 @@ typedef struct {
     void* user_data;                  // User data pointer
 } volc_hal_frame_info_t;
 
+typedef enum {
+    VOLC_AUDIO_MODE_WAKEUP = 0,
+    VOLC_AUDIO_MODE_CAPTURE,
+} volc_hal_audio_capture_mode_e;
+
 typedef void (*volc_hal_capture_data_cb_t)(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info);
+typedef int (*volc_hal_audio_wakeup_cb)(void *event, void *user_data);
 
 typedef struct volc_hal_capture_config {
     volc_media_type_e media_type;   // Media type
     volc_hal_capture_data_cb_t data_cb; // Data callback function
+    volc_hal_audio_wakeup_cb audio_wakeup_cb; // audio wakeup cb
     void* user_data;               // User data pointer
 } volc_hal_capture_config_t;
 
@@ -48,7 +55,7 @@ void volc_hal_capture_destroy(volc_hal_capture_t capture);
  * @param capture Capture instance pointer
  * @return int 0 if success, otherwise error code
  */
-int volc_hal_capture_start(volc_hal_capture_t capture);
+int volc_hal_capture_start(volc_hal_capture_t capture,volc_hal_audio_capture_mode_e mode);
 
 /**
  * @brief Stop a capture instance
