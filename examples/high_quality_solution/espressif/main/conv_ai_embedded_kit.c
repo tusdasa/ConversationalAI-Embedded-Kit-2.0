@@ -228,8 +228,8 @@ void  hal_level_init()
     set_audio_val(vol_handle,audio_vol);
 
 
-    iot_wakeup_init((iot_wakeup_cb)rec_engine_cb);
-    iot_wakeup_start();
+    // iot_wakeup_init((iot_wakeup_cb)rec_engine_cb);
+    // iot_wakeup_start();
 
     vol_handle = audio_vol_handle_create();
     set_audio_val(vol_handle,audio_vol);
@@ -239,7 +239,7 @@ void  hal_level_init()
     config.audio_wakeup_cb = (volc_hal_audio_wakeup_cb)rec_engine_cb;
     volc_hal_capture_t capture = volc_hal_capture_create(&config);
 
-    // volc_hal_capture_start(capture,VOLC_AUDIO_MODE_WAKEUP);
+    volc_hal_capture_start(capture,VOLC_AUDIO_MODE_WAKEUP);
 
 
     button_init();
@@ -311,7 +311,7 @@ void app_main(void)
     volc_hal_display_t global_display = g_hal_context->display_handle;
     extern lv_image_dsc_t img_app_pos; 
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
-    // volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
     
     // while(1){
     //     sleep(5);

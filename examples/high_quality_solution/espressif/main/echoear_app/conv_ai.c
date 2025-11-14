@@ -309,13 +309,15 @@ void conv_ai_task(void *pvParameters)
     // step 1: start audio capture & play
     // config.audio_wakeup_cb = (volc_hal_audio_wakeup_cb)rec_engine_cb;
     // volc_hal_capture_t audio_capture_ = volc_hal_capture_create(&config);
+   
     volc_hal_capture_t audio_capture_ = g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO];
-    volc_hal_capture_start(audio_capture_,VOLC_AUDIO_MODE_CAPTURE);
 
+    volc_hal_capture_start(audio_capture_,VOLC_AUDIO_MODE_CAPTURE);
 
     volc_hal_player_config_t player_config = {0};
     player_config.media_type = VOLC_MEDIA_TYPE_AUDIO;
     volc_hal_player_t player_pipeline = volc_hal_player_create(&player_config);
+
     volc_hal_player_start(player_pipeline);
 
 

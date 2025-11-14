@@ -133,9 +133,9 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
             impl->audio_player_config.audio_pipeline = audio_pipeline_init(&pipeline_cfg);
             mem_assert(impl->audio_player_config.audio_pipeline);
             impl->audio_player_config.raw_writer = __create_player_raw_stream();
-            audio_pipeline_register(impl->audio_player_config.audio_pipeline, impl->audio_player_config.raw_writer, "raw");
+            audio_pipeline_register(impl->audio_player_config.audio_pipeline, impl->audio_player_config.raw_writer, "player_raw");
             impl->audio_player_config.i2s_stream_writer = __create_player_i2s_stream();
-            audio_pipeline_register(impl->audio_player_config.audio_pipeline, impl->audio_player_config.i2s_stream_writer, "i2s");
+            audio_pipeline_register(impl->audio_player_config.audio_pipeline, impl->audio_player_config.i2s_stream_writer, "player_i2s");
             impl->audio_player_config.rsp = __create_resample_stream(CODEC_SAMPLE_RATE, 1, I2S_SAMPLE_RATE, CHANNEL_NUM);
             audio_element_set_output_timeout(impl->audio_player_config.rsp, portMAX_DELAY);
             audio_pipeline_register(impl->audio_player_config.audio_pipeline, impl->audio_player_config.rsp, "rsp");
@@ -146,9 +146,9 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
             impl->audio_player_config.board_handle = __create_player_audio_board();
 
 #if (CONFIG_VOLC_AUDIO_G711A)
-            const char *link_tag[] = {"raw", CODEC_NAME, "rsp", "i2s"};
+            const char *link_tag[] = {"player_raw", CODEC_NAME, "rsp", "player_i2s"};
 #else
-            const char *link_tag[] = {"raw", "rsp", "i2s"};
+            const char *link_tag[] = {"player_raw", "rsp", "player_i2s"};
 #endif
             audio_pipeline_link(impl->audio_player_config.audio_pipeline, &link_tag[0], sizeof(link_tag) / sizeof(link_tag[0]));
             g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO] = (volc_hal_player_t)impl;

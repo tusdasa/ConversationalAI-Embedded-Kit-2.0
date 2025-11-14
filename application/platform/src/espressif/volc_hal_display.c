@@ -138,11 +138,11 @@ void volc_hal_display_destroy(volc_hal_display_t display)
 int volc_hal_display_set_content(volc_hal_display_t display, volc_hal_display_obj_e obj, volc_hal_display_type_e type, const void* content)
 {
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
-    if(g_hal_context == NULL){
+    if(g_hal_context == NULL || g_hal_context->display_handle == NULL){
         return -1;
     }
     volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)(g_hal_context->display_handle);
-    
+
     if(obj == VOLC_DISPLAY_OBJ_STATUS && type == VOLC_DISPLAY_TEXT){
         memset(global_display_impl->status_texts, 0, 64);
         int count = strlen(content) >= 63 ? 63 : strlen(content);

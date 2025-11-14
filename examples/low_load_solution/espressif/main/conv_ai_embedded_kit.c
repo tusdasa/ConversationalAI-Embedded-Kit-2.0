@@ -332,7 +332,7 @@ static void conv_ai_task(void *pvParameters)
     //         volc_send_audio_data(engine_ctx.engine, audio_buffer, read_size, &info);
     //     }
     // }
-    volc_hal_capture_start(pipeline);
+    volc_hal_capture_start(pipeline,VOLC_AUDIO_MODE_CAPTURE);
     while (1)
     {
         vTaskDelay(pdMS_TO_TICKS(1000));
