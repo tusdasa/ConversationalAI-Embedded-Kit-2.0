@@ -3,6 +3,8 @@
 #include "conv_ai.h"
 #include "iot_wakeup.h"
 #include "volc_hal_display.h"
+#include "volc_hal_capture.h"
+
 
 #include "common_def.h"
 
@@ -74,8 +76,7 @@ static aios_ret_t state_conversation(aios_Ai_Conversation_app_t * const me, aios
                 // printf("conv_ai_task_stop \n");
             }
             sleep(3);
-            iot_wakeup_init(NULL);
-            iot_wakeup_start();
+            volc_hal_capture_start(g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO],VOLC_AUDIO_MODE_WAKEUP);
             volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
             return AIOS_Ret_Handled;
             //return AIOS_TRAN(state_on);

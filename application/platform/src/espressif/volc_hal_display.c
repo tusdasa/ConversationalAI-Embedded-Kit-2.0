@@ -74,7 +74,7 @@ static void __main_obj_init(volc_hal_display_impl_t* global_display_impl)
     if(global_display_impl && global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] == NULL){
         global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] = lv_img_create(global_display_impl->screen);
         //  size需要调整
-        lv_obj_set_size(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], 300, 300);
+        lv_obj_set_size(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], 250, 250);
         lv_obj_align(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], LV_ALIGN_CENTER, 0, 0);
     }
 }
@@ -138,11 +138,11 @@ void volc_hal_display_destroy(volc_hal_display_t display)
 int volc_hal_display_set_content(volc_hal_display_t display, volc_hal_display_obj_e obj, volc_hal_display_type_e type, const void* content)
 {
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
-    if(g_hal_context == NULL){
+    if(g_hal_context == NULL || g_hal_context->display_handle == NULL){
         return -1;
     }
     volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)(g_hal_context->display_handle);
-    
+
     if(obj == VOLC_DISPLAY_OBJ_STATUS && type == VOLC_DISPLAY_TEXT){
         memset(global_display_impl->status_texts, 0, 64);
         int count = strlen(content) >= 63 ? 63 : strlen(content);

@@ -30,7 +30,7 @@ idf_component_register(
     SRCS ${VOLC_APP_SRCS}
     INCLUDE_DIRS ${VOLC_APP_INCS}
     REQUIRES volc_conv_ai
-    PRIV_REQUIRES audio_pipeline audio_stream audio_hal esp_peripherals echoear lvgl button
+    PRIV_REQUIRES audio_pipeline audio_stream audio_hal esp_peripherals echoear lvgl button audio_recorder
 )
 
 # Compiler flags
