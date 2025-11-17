@@ -41,6 +41,15 @@ typedef struct volc_hal_display_config {
 volc_hal_display_t volc_hal_display_create(volc_hal_display_config_t* config);
 
 /**
+ * @brief set brightness 
+ * 
+ * @param display Display instance pointer
+ * @param brightness the brightness value [0,100] 
+ * @return volc_hal_display_t Display instance pointer
+ */
+int volc_hal_display_set_brightness(volc_hal_display_t display, int brightness);
+
+/**
  * @brief Destroy a Display instance
  * 
  * @param display Display instance pointer

@@ -117,6 +117,18 @@ volc_hal_display_t volc_hal_display_create(volc_hal_display_config_t* config)
     return (volc_hal_display_t)global_display_impl;
 }
 
+int volc_hal_display_set_brightness(volc_hal_display_t display, int brightness)
+{
+    if(display == NULL) return -1;
+    if (brightness > 100) {
+        brightness = 100;
+    }
+    if (brightness < 0) {
+        brightness = 0;
+    }
+    return bsp_display_brightness_set(brightness);
+}
+
 void volc_hal_display_destroy(volc_hal_display_t display)
 {
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
