@@ -8,7 +8,15 @@ set(VOLC_PLATFORM_INCS "${CMAKE_CURRENT_LIST_DIR}/../platform/inc"
                 CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 platform include dir")
 
 set(VOLC_SERVICE_INCS "${CMAKE_CURRENT_LIST_DIR}/../service/inc"
+                       "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/inc"
                 CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 service include dir")
+
+set(VOLC_SERVICE_SRCS "${CMAKE_CURRENT_LIST_DIR}/../service/src/volc_service_manager.c"
+                     "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/src/volc_conv_service.c"
+                     "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/src/volc_audio_vol.c"
+                     "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/src/volc_local_function_list.c"
+                     "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/src/volc_conv_service_manager.c"
+                CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 service src file")
 
 set(VOLC_UTIL_INCS "${CMAKE_CURRENT_LIST_DIR}/../utils"
                 CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 util include dir")

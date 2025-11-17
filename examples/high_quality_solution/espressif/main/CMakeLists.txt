@@ -5,7 +5,7 @@
 
 file(GLOB  APP_SRC  "./echoear_app/*.c")
 
-set(COMPONENT_SRCS "conv_ai_embedded_kit.c pipeline.c configuration_ap.c network.c" ${FRAMEWORK_SRCS} ${APP_SRC})
+set(COMPONENT_SRCS "conv_ai_embedded_kit.c pipeline.c configuration_ap.c network.c" ${FRAMEWORK_SRCS} ${APP_SRC} ${SERVICE_SRCS})
 if (CONFIG_VOLC_WS_MODE)
     add_definitions(-DENABLE_WS_MODE)
 endif()
@@ -17,7 +17,7 @@ endif()
 # add_subdirectory("../../../../framework")
 
 
-set(COMPONENT_ADD_INCLUDEDIRS . ${FRAMEWORK_INC})
+set(COMPONENT_ADD_INCLUDEDIRS . ${FRAMEWORK_INC} ${SERVICE_INC})
 
 set(COMPONENT_EMBED_TXTFILES assets/wifi_configuration_ap.html)
 

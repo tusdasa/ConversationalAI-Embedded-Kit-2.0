@@ -9,9 +9,6 @@
 #include <time.h>
 #include <inttypes.h>
 
-#include "echoear_app/aios_app_manager.h"
-#include "echoear_app/aios_ai_conversation_app.h"
-#include "echoear_app/common_def.h"
 #include "echoear_app/audio_vol.h"
 #include "echoear_app/button_event.h"
 #include "iot_button.h"
@@ -40,40 +37,35 @@
 #include "pipeline.h"
 #include "cJSON.h"
 #include "network.h"
-#include "echoear_app/conv_ai.h"
+#include "volc_service_manager.h"
+#include "volc_service_common.h"
+#include "volc_conv_service_manager.h"
 
 #include "volc_hal.h"
 #include "volc_hal_display.h"
 #include "volc_hal_capture.h"
 
-
-#include "echoear_app/iot_wakeup.h"
-#include "driver/gpio.h"
 #include "board.h"
 #include  "esp_mac.h"
-
 #include "lvgl.h"
-
 
 #define STATS_TASK_PRIO 5
 
 static const char *TAG = "VolcConvAI";
 extern audio_vol_handle vol_handle;
 extern int audio_vol;
- 
-
-static recorder_pipeline_handle_t record_pipeline; 
-extern recorder_pipeline_handle_t wake_record_pipeline; 
 
 static  int wake_up_running = 1;
 
 void session_init(){
-    aios_app_manager_init();  
-    aios_Ai_Conversation_app_init();
+    volc_service_manager_init();
+    volc_conv_service_manager_init();
+    // aios_app_manager_init();  
+    // aios_Ai_Conversation_app_init();
 }
 
 void Task(void* data){
-    aios_init(Event_Max);                            // AIOS初始化
+    aios_init(VOLC_SERVICE_EVENT_MAX);                            // AIOS初始化
     session_init();
 
     // aios_led_init();                                 // LED状态机初始化
@@ -81,7 +73,6 @@ void Task(void* data){
     // aios_run();
     return;
 }
-
 
 static void sys_monitor_task(void *pvParameters)
 {
@@ -182,7 +173,7 @@ static esp_err_t rec_engine_cb(audio_rec_evt_t *event, void *user_data)
     if (AUDIO_REC_WAKEUP_START == event->type) {
 #if CONFIG_LANGUAGE_WAKEUP_MODE
         // printf("AUDIO_REC_WAKEUP_START \n");
-        aios_event_pub(Event_Ai_Conversation,NULL,NULL);
+        aios_event_pub(VOLC_SERVICE_AI_CONVERSATION,NULL,NULL);
 #endif // CONFIG_LANGUAGE_WAKEUP_MODE
     } else if (AUDIO_REC_VAD_START == event->type) {
     } else if (AUDIO_REC_VAD_END == event->type) {
@@ -230,17 +221,18 @@ void  hal_level_init()
 
     // iot_wakeup_init((iot_wakeup_cb)rec_engine_cb);
     // iot_wakeup_start();
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
 
     vol_handle = audio_vol_handle_create();
     set_audio_val(vol_handle,audio_vol);
     volc_hal_capture_config_t config = {0};
     config.media_type = VOLC_MEDIA_TYPE_AUDIO;
-    config.data_cb = audio_capture_cb;
-    config.audio_wakeup_cb = (volc_hal_audio_wakeup_cb)rec_engine_cb;
+    config.data_cb = NULL;
+    config.user_data = g_hal_context;
+    config.audio_wakeup_cb = (volc_hal_audio_wakeup_cb_t)rec_engine_cb;
     volc_hal_capture_t capture = volc_hal_capture_create(&config);
 
     volc_hal_capture_start(capture,VOLC_AUDIO_MODE_WAKEUP);
-
 
     button_init();
     button_register_cb(6, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);

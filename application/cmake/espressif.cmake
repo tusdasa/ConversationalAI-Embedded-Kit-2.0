@@ -16,6 +16,7 @@ set(VOLC_ESP_DISPLAY_SRCS "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/l
                           "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/lvgl_source/img_app_aiPhone.c"
 )
 set(VOLC_APP_SRCS ${VOLC_FRAMEWORK_SRCS}
+                  ${VOLC_SERVICE_SRCS}
                   ${VOLC_ESP_SRCS}
                   ${VOLC_ESP_DISPLAY_SRCS}    
 )

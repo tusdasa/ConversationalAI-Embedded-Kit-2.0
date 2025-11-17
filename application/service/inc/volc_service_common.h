@@ -1,0 +1,24 @@
+// Copyright (2025) Beijing Volcano Engine Technology Ltd.
+// SPDX-License-Identifier: Apache-2.0
+#ifndef VOLC_CONV_COMMON_H__
+#define VOLC_CONV_COMMON_H__
+#include "aios.h"
+
+enum {
+    VOLC_SERVICE_EVENT_TEST = Event_User,
+    VOLC_SERVICE_NETWORK_CONFIG,
+    VOLC_SERVICE_AI_CONVERSATION,
+    
+    // Ai_Conversation event:
+    VOLC_SERVICE_AI_CONVERSATION_START = 100,
+    VOLC_SERVICE_AI_CONVERSATION_INTERRUPT = 101,
+    VOLC_SERVICE_AI_CONVERSATION_QUIT = 102,
+    VOLC_SERVICE_EVENT_MAX = 103,
+};
+
+enum {
+    VOLC_SERVICE_PRIORITY_AI_CONVERSATION = 0,
+    VOLC_SERVICE_PRIORITY_APP_MANAGER,
+};
+
+#endif /* VOLC_CONV_COMMON_H__ */

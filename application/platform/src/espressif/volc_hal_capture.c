@@ -80,8 +80,8 @@ typedef struct {
         volc_hal_audio_capture_config_t audio_capture_config;
         volc_hal_video_capture_config_t video_capture_config;
     };
-    volc_hal_capture_data_cb_t     data_cb; // Data callback function
-    volc_hal_audio_wakeup_cb audio_wakeup_cb; // audio wakeup cb
+    volc_hal_capture_data_cb_t data_cb; // Data callback function
+    volc_hal_audio_wakeup_cb_t audio_wakeup_cb; // audio wakeup cb
     void*                      user_data;               // User data pointer
     volc_osal_tid_t            capture_thread;
     volatile bool              is_started;
@@ -494,4 +494,37 @@ void volc_hal_capture_destroy(volc_hal_capture_t capture)
             break;
     }
     volc_osal_free(impl);
+}
+
+int volc_hal_capture_update_config(volc_hal_capture_t capture, volc_hal_capture_config_t* config) {
+    volc_hal_capture_impl_t *impl = (volc_hal_capture_impl_t *)capture;
+    if (!impl || !config) {
+        LOGE("capture or config is NULL");
+        return -1;
+    }
+
+    if (impl->media_type != config->media_type) {
+        LOGE("media_type not match");
+        return -1;
+    }
+
+    if (impl->user_data != config->user_data) {
+        LOGE("user_data not match");
+        return -1;
+    }
+
+    if (impl->is_started) {
+        LOGE("capture is started, can not update config");
+        return -1;
+    }
+
+    if (config->data_cb != NULL) {
+        impl->data_cb = config->data_cb;
+    }
+
+    if (config->audio_wakeup_cb != NULL) {
+        impl->audio_wakeup_cb = config->audio_wakeup_cb;
+    }
+
+    return 0;
 }
