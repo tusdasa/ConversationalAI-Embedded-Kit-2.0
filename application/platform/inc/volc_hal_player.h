@@ -32,9 +32,17 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config);
  * 
  * @param player Player instance pointer (audio)
  * @param volume the volume [0,100]
- * @return volc_hal_player_t Player instance pointer
+ * @return int 0 if success 
  */
 int volc_hal_set_audio_player_volume(volc_hal_player_t player, int volume);
+
+/**
+ * @brief get audio player volume
+ * 
+ * @param player Player instance pointer (audio)
+ * @return the volume
+ */
+int volc_hal_get_audio_player_volume(volc_hal_player_t player);
 
 /**
  * @brief Destroy a player instance

@@ -20,11 +20,14 @@ set(VOLC_APP_SRCS ${VOLC_FRAMEWORK_SRCS}
                   ${VOLC_ESP_SRCS}
                   ${VOLC_ESP_DISPLAY_SRCS}    
 )
-        
+
+set(VOLC_LVGL_SOURCE_INCS "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/lvgl_source/")
+
 set(VOLC_APP_INCS ${VOLC_FRAMEWORK_INCS}
     ${VOLC_PLATFORM_INCS}
     ${VOLC_SERVICE_INCS}
     ${VOLC_UTIL_INCS}
+    ${VOLC_LVGL_SOURCE_INCS}
 )
 
 idf_component_register(

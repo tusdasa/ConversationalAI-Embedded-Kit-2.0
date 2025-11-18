@@ -3,6 +3,7 @@
 
 #include "volc_hal.h"
 #include "volc_hal_display.h"
+#include "volc_lvgl_source.h"
 #include "lvgl.h"
 #include "bsp/echoear.h"
 #include <stddef.h>
@@ -28,8 +29,6 @@ typedef struct volc_hal_display_impl {
 
 static volc_hal_display_impl_t* global_display_impl = NULL;
 volc_hal_display_t  global_display = NULL;
-
-extern lv_font_t echoear_font_16;
 
 static void __subtitle_update_cb(lv_timer_t* timer)
 {

@@ -124,13 +124,6 @@ static void __rtc_stop(rtc_impl_t* rtc)
     return;
 }
 
-static void __send_message_2_user(rtc_impl_t* rtc, volc_msg_t* msg)
-{
-    if (rtc->message_callback) {
-        rtc->message_callback(rtc->context, msg);
-    }
-}
-
 static void __send_data_2_user(rtc_impl_t* rtc, const void* data, int data_len, volc_data_info_t* info) {
     if (rtc->data_callback) {
         rtc->data_callback(rtc->context, data, data_len, info);

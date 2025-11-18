@@ -6,6 +6,7 @@
 #include "aios.h"
 #include "cJSON.h"
 #include "volc_hal.h"
+#include "volc_osal.h"
 #include "util/volc_log.h"
 #include "volc_service_common.h"
 #include "volc_conv_service.h"
@@ -116,13 +117,6 @@ static void __on_volc_conversation_status(volc_engine_t handle, volc_conv_status
 static void __on_volc_audio_data(volc_engine_t handle, const void *data_ptr, size_t data_len, volc_audio_frame_info_t *info_ptr, void *user_data)
 {
     int error = 0;
-    // volc_conv_service_t *demo = (volc_conv_service_t *)user_data;
-
-    // if (demo == NULL)
-    // {
-    //     printf("demo is NULL\n");
-    //     return;
-    // }
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
     if (g_hal_context == NULL) {
         printf("volc_get_global_hal_context failed\n");
@@ -184,8 +178,6 @@ static void __on_subtitle_message_received(const cJSON* root) {
                     sub_offset = strlen(sub);
                 }
             }
-            // printf("%s %d\n",sub,strlen(sub));
-                // printf("subtitle:%s:%s \n", cJSON_GetStringValue(user_id_obj), cJSON_GetStringValue(text_obj));
         }
     }
 }
@@ -225,11 +217,7 @@ static void __on_function_calling_message_received(const cJSON* root, const char
                 cJSON *arguments_json = cJSON_Parse(arguments_json_str);
                 cJSON* action_obj = cJSON_GetObjectItem(arguments_json, "action");
                 const char* action = (action_obj->valuestring);
-                if(strcmp(action,"up") == 0){
-                    volc_up_audio_val();
-                } else if (strcmp(action,"down") == 0) {
-                    volc_down_audio_val();
-                }
+                adjust_audio_val(action);
                 volc_send_text_to_agent(conv_service.engine,"别着急，我来给你调整音量",VOLC_AGENT_TYPE_TTS);
                 cJSON *fc_obj = cJSON_CreateObject();
                 cJSON_AddStringToObject(fc_obj, "ToolCallID", func_id);
@@ -242,12 +230,10 @@ static void __on_function_calling_message_received(const cJSON* root, const char
                 fc_message_buffer[6] = (json_str_len >> 8) & 0xff;
                 fc_message_buffer[7] = (json_str_len >> 0) & 0xff;
                 memcpy(fc_message_buffer + 8, json_string, json_str_len);
-                // printf("send message: %s \n", json_string);
                 cJSON_Delete(fc_obj);
                 volc_message_info_t info = {0};
                 info.is_binary = 1;
                 volc_send_message(conv_service.engine,fc_message_buffer, json_str_len + 8, &info);
-                // printf("fc success \n");
             }
             if(strcmp(func_name,"stop_chat") == 0){
                 volc_send_text_to_agent(conv_service.engine,"好的拜拜",VOLC_AGENT_TYPE_TTS);
@@ -262,7 +248,6 @@ static void __on_function_calling_message_received(const cJSON* root, const char
                 fc_message_buffer[6] = (json_str_len >> 8) & 0xff;
                 fc_message_buffer[7] = (json_str_len >> 0) & 0xff;
                 memcpy(fc_message_buffer + 8, json_string, json_str_len);
-                // printf("send message: %s \n", json_string);
                 cJSON_Delete(fc_obj);
                 volc_message_info_t info = {0};
                 info.is_binary = 1;
@@ -291,7 +276,6 @@ static void __on_volc_message_data(volc_engine_t handle, const void *message, si
             }
         }
      }
-    // printf("Received message: %.*s", (int)size, (const char *)message);
 }
 
 void conv_ai_service_init()
@@ -339,6 +323,7 @@ void conv_ai_service_task(void *pvParameters)
     if (g_hal_context->capture_handle[VOLC_HAL_PLAYER_AUDIO] == NULL) {
         g_hal_context->capture_handle[VOLC_HAL_PLAYER_AUDIO] = volc_hal_capture_create(&capture_audio_config);
     }
+    volc_hal_capture_stop(g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO]);
     volc_hal_capture_update_config(capture_handle, &capture_audio_config);
     volc_hal_capture_start(g_hal_context->capture_handle[VOLC_HAL_PLAYER_AUDIO], VOLC_AUDIO_MODE_CAPTURE);
 
@@ -369,19 +354,17 @@ void conv_ai_service_task(void *pvParameters)
     }
 
     volc_hal_capture_stop(g_hal_context->capture_handle[VOLC_HAL_PLAYER_AUDIO]);
-    volc_hal_capture_destroy(g_hal_context->capture_handle[VOLC_HAL_PLAYER_AUDIO]);
-    g_hal_context->capture_handle[VOLC_HAL_PLAYER_AUDIO] = NULL;
     
     volc_hal_player_stop(g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO]);
     volc_hal_player_destroy(g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO]);
-    g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO] = NULL;
 
     volc_stop(conv_service.engine);
 
     volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_STATUS, VOLC_DISPLAY_TEXT, "ai对话已断开");
-
+    volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_SUBTITLE, VOLC_DISPLAY_TEXT, "");
     is_ready = false;
     is_interrupt = false;
+    volc_osal_thread_exit(NULL);
 }
 
 void conv_ai_service_task_stop(void)

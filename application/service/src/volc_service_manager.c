@@ -25,14 +25,10 @@ static aios_ret_t __state_wait_service_event(volc_service_manager_t* const me, a
 
     switch ((int)e->id) {
         case VOLC_SERVICE_NETWORK_CONFIG:
-            // printf("VOLC_SERVICE_NETWORK_CONFIG\n");
             me->status = 0;
             return AIOS_Ret_Handled;
         case VOLC_SERVICE_AI_CONVERSATION:
-            // printf("VOLC_SERVICE_AI_CONVERSATION\n");
-            volc_hal_capture_stop(g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO]);
             aios_event_pub(VOLC_SERVICE_AI_CONVERSATION_START, NULL, NULL);
-
             return AIOS_Ret_Handled;
         default:
             return AIOS_Ret_NotHandled;
@@ -44,7 +40,6 @@ static aios_ret_t __state_init(volc_service_manager_t* const me, aios_event_t co
     AIOS_EVENT_SUB(VOLC_SERVICE_NETWORK_CONFIG); // 订阅事件
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION); // 订阅事件
     me->status = 0;
-
     return AIOS_TRAN(__state_wait_service_event);
 }
 

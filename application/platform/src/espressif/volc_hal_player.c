@@ -49,6 +49,7 @@ typedef struct {
     audio_element_handle_t rsp;
     audio_element_handle_t i2s_stream_writer;
     audio_board_handle_t board_handle;
+    int volume;
 } audio_player_config_t;
 
 typedef struct {
@@ -144,7 +145,7 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
                 audio_pipeline_register(impl->audio_player_config.audio_pipeline, impl->audio_player_config.audio_decoder, CODEC_NAME);
             }
             impl->audio_player_config.board_handle = __create_player_audio_board();
-
+            impl->audio_player_config.volume = DEFAULT_AUDIO_VOL;
 #if (CONFIG_VOLC_AUDIO_G711A)
             const char *link_tag[] = {"player_raw", CODEC_NAME, "rsp", "player_i2s"};
 #else
@@ -168,11 +169,20 @@ int volc_hal_set_audio_player_volume(volc_hal_player_t player, int volume){
         return -1;
     }
     if(impl->media_type == VOLC_MEDIA_TYPE_AUDIO){
+        impl->audio_player_config.volume = volume;
         return audio_hal_set_volume(impl->audio_player_config.board_handle->audio_hal, volume);
     } else if(impl->media_type == VOLC_MEDIA_TYPE_VIDEO){
         LOGE("media type %d not supported set volume", impl->media_type);
         return -1;
     }
+}
+
+int volc_hal_get_audio_player_volume(volc_hal_player_t player){
+    volc_player_impl_t* impl = (volc_player_impl_t*)player;
+    if (impl == NULL) {
+        return -1;
+    }
+    return impl->audio_player_config.volume;
 }
 
 void volc_hal_player_destroy(volc_hal_player_t player)

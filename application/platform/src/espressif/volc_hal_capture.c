@@ -87,6 +87,8 @@ typedef struct {
     volatile bool              is_started;
 } volc_hal_capture_impl_t;
 
+static bool has_gain = false;
+
 static int __volc_capture_get_default_read_size(volc_hal_capture_t capture)
 {
     // 60ms
@@ -146,11 +148,14 @@ static audio_element_handle_t __create_resample_stream(int src_rate, int src_ch,
 
 static audio_element_handle_t __create_record_i2s_stream(bool enable_wake)
 {
+    if(has_gain == false){
 #if (CONFIG_ESP32_S3_KORVO2_V3_BOARD || CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
-    es7210_adc_set_gain(ES7210_INPUT_MIC3, GAIN_30DB);
+        es7210_adc_set_gain(ES7210_INPUT_MIC3, GAIN_30DB);
 #elif CONFIG_M5STACK_ATOMS3R_BOARD
-    es8311_set_mic_gain(ES8311_MIC_GAIN_36DB);
+        es8311_set_mic_gain(ES8311_MIC_GAIN_36DB);
 #endif
+        has_gain = true;
+    }
 
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT_WITH_PARA(CODEC_ADC_I2S_PORT, I2S_SAMPLE_RATE, ALGORITHM_STREAM_SAMPLE_BIT, AUDIO_STREAM_READER); // 参数需要仔细检查
     i2s_cfg.type = AUDIO_STREAM_READER;
@@ -325,6 +330,11 @@ volc_hal_capture_t volc_hal_capture_create(volc_hal_capture_config_t* config)
             }
             capture->audio_capture_config.raw_reader = __create_record_raw_stream();
             audio_pipeline_register(capture->audio_capture_config.audio_pipeline, capture->audio_capture_config.raw_reader, "raw");
+            {
+                // NOTE: before start wakeUp，must call this API
+                audio_board_handle_t board_handle = audio_board_init();
+                audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+            }
             capture->audio_capture_config.state = INITED;
             g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO] = (volc_hal_capture_t)capture;
             break;

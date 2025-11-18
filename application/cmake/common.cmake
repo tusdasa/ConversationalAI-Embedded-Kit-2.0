@@ -13,7 +13,6 @@ set(VOLC_SERVICE_INCS "${CMAKE_CURRENT_LIST_DIR}/../service/inc"
 
 set(VOLC_SERVICE_SRCS "${CMAKE_CURRENT_LIST_DIR}/../service/src/volc_service_manager.c"
                      "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/src/volc_conv_service.c"
-                     "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/src/volc_audio_vol.c"
                      "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/src/volc_local_function_list.c"
                      "${CMAKE_CURRENT_LIST_DIR}/../service/conv_service/src/volc_conv_service_manager.c"
                 CACHE INTERNAL "ConversationalAI-Embedded-Kit-2.0 service src file")

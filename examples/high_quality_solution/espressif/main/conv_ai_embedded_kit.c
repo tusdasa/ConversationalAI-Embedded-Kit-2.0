@@ -8,9 +8,6 @@
 #include <unistd.h>
 #include <time.h>
 #include <inttypes.h>
-
-#include "echoear_app/audio_vol.h"
-#include "echoear_app/button_event.h"
 #include "iot_button.h"
 
 #include "esp_event.h"
@@ -23,6 +20,8 @@
 #include "esp_heap_task_info.h"
 #include "esp_random.h"
 #include "esp_sntp.h"
+
+#include "echoear_app/button_event.h"
 
 #include "freertos/semphr.h"
 #include "esp_err.h"
@@ -44,24 +43,18 @@
 #include "volc_hal.h"
 #include "volc_hal_display.h"
 #include "volc_hal_capture.h"
-
+#include "volc_lvgl_source.h"
 #include "board.h"
-#include  "esp_mac.h"
-#include "lvgl.h"
+#include "esp_mac.h"
 
 #define STATS_TASK_PRIO 5
 
 static const char *TAG = "VolcConvAI";
-extern audio_vol_handle vol_handle;
-extern int audio_vol;
-
 static  int wake_up_running = 1;
 
 void session_init(){
     volc_service_manager_init();
     volc_conv_service_manager_init();
-    // aios_app_manager_init();  
-    // aios_Ai_Conversation_app_init();
 }
 
 void Task(void* data){
@@ -88,37 +81,6 @@ static void sys_monitor_task(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
-
-// static void button_event_cb_set(void *arg,void *data)
-// {
-//     printf("按键被按下！%s \n",((char*)data));
-//     aios_event_pub(Event_Ai_Conversation,NULL,NULL);
-// }
-
-// static void button_event_cb_play(void *arg,void *data)
-// {
-//     printf("按键被按下！%s \n",((char*)data));
-//     aios_event_pub(Event_Ai_Conversation_QUIT,NULL,NULL);
-// }
-
-// static void button_event_cb_voladd(void *arg,void *data)
-// {
-//     printf("按键被按下！%s \n",((char*)data));
-//     if(vol_handle){
-//         audio_vol = (audio_vol + 10) <= 100 ? (audio_vol + 10) : 100;
-//         set_audio_val(vol_handle,audio_vol);
-//     }
-    
-// }
-
-// static void button_event_cb_voldec(void *arg,void *data)
-// {
-//     printf("按键被按下！%s \n",((char*)data));
-//     if(vol_handle){
-//         audio_vol = (audio_vol - 10) >= 0 ? (audio_vol - 10) : 0;
-//         set_audio_val(vol_handle,audio_vol);
-//     }
-// }
 
 void initialize_sntp(void)
 {
@@ -205,8 +167,6 @@ static void wifi_ap_event_cb(void *arg, void *data)
     }
 }
 
-// extern void audio_capture_cb(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info);
-
 void  hal_level_init()
 {
 
@@ -214,17 +174,7 @@ void  hal_level_init()
     initialize_sntp();
     // wait for time sync
     wait_for_time_sync();
-
-    vol_handle = audio_vol_handle_create();
-    set_audio_val(vol_handle,audio_vol);
-
-
-    // iot_wakeup_init((iot_wakeup_cb)rec_engine_cb);
-    // iot_wakeup_start();
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
-
-    vol_handle = audio_vol_handle_create();
-    set_audio_val(vol_handle,audio_vol);
     volc_hal_capture_config_t config = {0};
     config.media_type = VOLC_MEDIA_TYPE_AUDIO;
     config.data_cb = NULL;
@@ -236,6 +186,7 @@ void  hal_level_init()
 
     button_init();
     button_register_cb(6, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);
+
     // Allow other core to finish initialization
     // vTaskDelay(pdMS_TO_TICKS(2000));
 }
@@ -247,14 +198,14 @@ void app_main(void)
     volc_hal_display_config_t display_config = {0};
     volc_hal_display_create(&display_config);
 
-    // 打印mac地址
-    /*
-    uint8_t derived_mac_addr[6] = {0};
-    ESP_ERROR_CHECK(esp_read_mac(derived_mac_addr, ESP_MAC_WIFI_STA));
-    printf("WIFI_STA MAC 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x \n",
-              derived_mac_addr[0], derived_mac_addr[1], derived_mac_addr[2],
-              derived_mac_addr[3], derived_mac_addr[4], derived_mac_addr[5]);
-    */
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
+    volc_hal_display_t global_display = g_hal_context->display_handle;
+
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"初始化中...");
    
     /* Initialize the default event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -271,42 +222,15 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
     ESP_ERROR_CHECK(esp_netif_init());
-    
-    // 初始化sd卡 用于存储
-    /*
-        esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-        esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
-        ESP_ERROR_CHECK(audio_board_sdcard_init(set, SD_MODE_1_LINE));
-    */
- 
+
     bool connected = configure_network();
     if (connected == false)
     {
         ESP_LOGE(TAG, "Failed to connect to network");
         return;
     }
-    // button_init();
-    // aios_init(Event_Max);                            // AIOS初始化
     xTaskCreate(&Task, "conv_ai_task", 4096, NULL, 5, NULL);
-    // aios_event_pub(Event_Ai_Conversation,NULL,NULL);
-    // button_register_cb(0,0,button_event_cb_voladd,"vol+");
-    // button_register_cb(1,0,button_event_cb_voldec,"vol-");
-    // button_register_cb(2,0,button_event_cb_set,"set");
-    // button_register_cb(3,0,button_event_cb_play,"play");
 
     hal_level_init();
-    // iot_wakeup_register_cb((iot_wakeup_cb)rec_engine_cb);
-    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
-    if(g_hal_context == NULL){
-        return;
-    }
-    volc_hal_display_t global_display = g_hal_context->display_handle;
-    extern lv_image_dsc_t img_app_pos; 
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
-    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
-    
-    // while(1){
-    //     sleep(5);
-    // }
-    // sys_monitor_task(NULL);
 }

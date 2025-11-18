@@ -32,7 +32,6 @@ static aios_ret_t __state_conversation(volc_conv_service_manager_t * const me, a
     volc_hal_display_t global_display = g_hal_context->display_handle;
     switch (e->id) {
         case VOLC_SERVICE_AI_CONVERSATION_START:
-            // printf("state_conversation VOLC_SERVICE_AI_CONVERSATION_START\n");
             if(me->conv_thread_id == NULL){
                 volc_osal_thread_param_t param = {0};
                 volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话启动中");
@@ -43,16 +42,13 @@ static aios_ret_t __state_conversation(volc_conv_service_manager_t * const me, a
             }
             return AIOS_Ret_Handled;
         case VOLC_SERVICE_AI_CONVERSATION_INTERRUPT:
-            // printf("state_conversation Event_Interrupt\n");
             me->status = 0;
             return AIOS_Ret_Handled;
         case VOLC_SERVICE_AI_CONVERSATION_QUIT:
-            // printf("state_conversation VOLC_SERVICE_AI_CONVERSATION_QUIT\n");
             if(me->conv_thread_id != NULL){
                 sleep(5);
                 conv_ai_service_task_stop();
                 me->conv_thread_id = NULL;
-                // printf("conv_ai_service_task_stop \n");
             }
             sleep(3);
             volc_hal_capture_start(g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO],VOLC_AUDIO_MODE_WAKEUP);
