@@ -13,6 +13,7 @@
 extern "C" {
 #endif
 
+#define VOLC_DEVICE_NAME_LENGTH 32
 typedef enum {
     VOLC_HAL_CAPTURE_AUDIO = 0, // audio
     VOLC_HAL_CAPTURE_VIDEO,
@@ -30,6 +31,7 @@ typedef struct {
     volc_hal_capture_t capture_handle[VOLC_HAL_CAPTURE_MAX];
     volc_hal_display_t display_handle;
     volc_hal_player_t player_handle[VOLC_HAL_PLAYER_MAX];
+    char device_name[VOLC_DEVICE_NAME_LENGTH];
 } volc_hal_context_t;
 
 /**

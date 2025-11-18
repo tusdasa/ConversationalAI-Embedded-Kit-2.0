@@ -4,6 +4,10 @@
 #include "volc_hal.h"
 #include "volc_osal.h"
 #include "driver/gpio.h"
+#include  "esp_mac.h"
+#include <stdio.h>
+
+#define DEVICE_NAME_PREFIX "esp32_"
 
 volc_hal_context_t* global_context = NULL;
 
@@ -22,6 +26,15 @@ static void __init_echoear_board_power(void)
 }
 #endif
 
+static void __generate_device_name(char* device_name){
+    uint8_t mac[6] = {0};
+    ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));
+    // printf("WIFI_STA MAC 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x \n",
+    //           mac[0], mac[1], mac[2],
+    //           mac[3], mac[4], mac[5]);
+    snprintf(device_name,VOLC_DEVICE_NAME_LENGTH,"%s%02X%02X%02X%02X%02X%02X",DEVICE_NAME_PREFIX,mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
 int volc_hal_init(void) {
     if(global_context == NULL){
 #if (CONFIG_ESP32_S3_ECHOEAR_V1_2_BOARD)
@@ -29,6 +42,7 @@ int volc_hal_init(void) {
 #endif
         global_context = (volc_hal_context_t*) volc_osal_calloc(1,sizeof(volc_hal_context_t));
     }
+    __generate_device_name(global_context->device_name);
     return 0;
 }
 
