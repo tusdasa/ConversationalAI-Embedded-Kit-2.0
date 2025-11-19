@@ -32,7 +32,7 @@ static aios_ret_t __state_conversation(volc_conv_service_manager_t * const me, a
     volc_hal_display_t global_display = g_hal_context->display_handle;
     switch (e->id) {
         case VOLC_SERVICE_AI_CONVERSATION_START:
-            if(me->conv_thread_id == NULL){
+            if (me->conv_thread_id == NULL) {
                 volc_osal_thread_param_t param = {0};
                 volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"ai对话启动中");
                 snprintf(param.name, sizeof(param.name), "%s", "conv_ai");
@@ -44,15 +44,18 @@ static aios_ret_t __state_conversation(volc_conv_service_manager_t * const me, a
         case VOLC_SERVICE_AI_CONVERSATION_INTERRUPT:
             me->status = 0;
             return AIOS_Ret_Handled;
+        // control the Ai_Conversation task quit
         case VOLC_SERVICE_AI_CONVERSATION_QUIT:
-            if(me->conv_thread_id != NULL){
-                sleep(5);
+            if (me->conv_thread_id != NULL) {
                 conv_ai_service_task_stop();
                 me->conv_thread_id = NULL;
-            }
-            sleep(3);
-            volc_hal_capture_start(g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO],VOLC_AUDIO_MODE_WAKEUP);
-            volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
+            }          
+            return AIOS_Ret_Handled;
+        // notice the Ai_Conversation over by task
+        case VOLC_SERVICE_AI_CONVERSATION_OVER:
+            if (me->conv_thread_id != NULL) {
+                me->conv_thread_id = NULL;
+            }          
             return AIOS_Ret_Handled;
         default:
             return AIOS_Ret_NotHandled;
@@ -64,6 +67,7 @@ static aios_ret_t __state_init(volc_conv_service_manager_t * const me, aios_even
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_START); // 订阅事件
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_INTERRUPT); // 订阅事件
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_QUIT); // 订阅事件
+    AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_OVER); // 订阅事件
     me->status = 0;
     me->timer = NULL;
     me->conv_thread_id = NULL;

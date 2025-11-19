@@ -49,9 +49,11 @@ extern "C" {
   }\
 }"
 
+#define CONV_SERVICE_TIMEOUT 15
 typedef struct {
     volc_event_handler_t volc_event_handler;
     volc_engine_t engine;
+    int wait_time;
 } volc_conv_service_t;
 
 static char config_buf[1024] = {0};
@@ -212,8 +214,7 @@ static void __on_function_calling_message_received(const cJSON* root, const char
             char* arguments_json_str = cJSON_GetStringValue(arguments_obj);
             const char* func_name = cJSON_GetStringValue(name_obj);
             const char* func_id = cJSON_GetStringValue(id_obj);
-            if (strcmp(func_name, "adjust_audio_val") == 0 && arguments_json_str) {
-               
+            if (strcmp(func_name, "adjust_audio_val") == 0 && arguments_json_str) {               
                 cJSON *arguments_json = cJSON_Parse(arguments_json_str);
                 cJSON* action_obj = cJSON_GetObjectItem(arguments_json, "action");
                 const char* action = (action_obj->valuestring);
@@ -269,8 +270,9 @@ static void __on_volc_message_data(volc_engine_t handle, const void *message, si
         if (root != NULL) {
             if (message_buffer[0] == 's' && message_buffer[1] == 'u' && message_buffer[2] == 'b' && message_buffer[3] == 'v') {
                 __on_subtitle_message_received(root);
+                conv_service.wait_time = 0;
                 
-            }else if (message_buffer[0] == 't' && message_buffer[1] == 'o' && message_buffer[2] == 'o' && message_buffer[3] == 'l') {
+            } else if (message_buffer[0] == 't' && message_buffer[1] == 'o' && message_buffer[2] == 'o' && message_buffer[3] == 'l') {
                 // function calling 消息
                 __on_function_calling_message_received(root, message_buffer + 8);
             }
@@ -305,10 +307,13 @@ void conv_ai_service_init()
 
 void conv_ai_service_task(void *pvParameters)
 {
+    is_interrupt = false;
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    char* status_str = NULL;
     if (g_hal_context == NULL) {
         LOGE("volc_get_global_hal_context failed");
-        return;
+        status_str = "系统未初始化,ai对话连接失败";
+        goto CONV_AI_QUIT;
     }
     global_display = g_hal_context->display_handle;
     int ret = 0;
@@ -334,6 +339,7 @@ void conv_ai_service_task(void *pvParameters)
     }
     
     volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_STATUS, VOLC_DISPLAY_TEXT, "ai对话连接中");
+    volc_hal_player_start(g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO]);
 
     // step 2: start ai conversation
     volc_opt_t opt = {
@@ -344,31 +350,44 @@ void conv_ai_service_task(void *pvParameters)
     ret = volc_start(conv_service.engine, &opt);
     if (ret != 0) {
         LOGE("volc_start failed, ret: %d", ret);
-        return;
+        status_str = "ai对话连接失败,准备退出";
+        goto CONV_AI_QUIT;
     }
-    volc_hal_player_start(g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO]);
     volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_STATUS, VOLC_DISPLAY_TEXT, "ai对话已连接");
 
     while (!is_interrupt) {
         sleep(1);
+        conv_service.wait_time++;
+        if(conv_service.wait_time >= CONV_SERVICE_TIMEOUT){
+            status_str = "ai对话已超时,准备退出";
+            goto CONV_AI_QUIT;
+        }
     }
+    status_str = "ai对话已断开";
 
+CONV_AI_QUIT:
+    aios_event_pub(VOLC_SERVICE_AI_CONVERSATION_OVER, NULL, NULL);
     volc_hal_capture_stop(g_hal_context->capture_handle[VOLC_HAL_PLAYER_AUDIO]);
-    
     volc_hal_player_stop(g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO]);
     volc_hal_player_destroy(g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO]);
 
     volc_stop(conv_service.engine);
-
-    volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_STATUS, VOLC_DISPLAY_TEXT, "ai对话已断开");
+    if(status_str != NULL){
+        volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_STATUS, VOLC_DISPLAY_TEXT, status_str);
+    }
     volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_SUBTITLE, VOLC_DISPLAY_TEXT, "");
+    // just show the status: Ai对话已断开
+    sleep(1);
     is_ready = false;
-    is_interrupt = false;
+    volc_hal_capture_start(g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO],VOLC_AUDIO_MODE_WAKEUP);
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
     volc_osal_thread_exit(NULL);
 }
 
 void conv_ai_service_task_stop(void)
 {
+    // sleep for AI Agent say goodbye
+    sleep(5);
     is_interrupt =  true;
 }
 

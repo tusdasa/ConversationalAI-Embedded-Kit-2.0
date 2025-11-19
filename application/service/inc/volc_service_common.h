@@ -12,8 +12,11 @@ enum {
     // Ai_Conversation event:
     VOLC_SERVICE_AI_CONVERSATION_START = 100,
     VOLC_SERVICE_AI_CONVERSATION_INTERRUPT = 101,
+    // control the Ai_Conversation task quit
     VOLC_SERVICE_AI_CONVERSATION_QUIT = 102,
-    VOLC_SERVICE_EVENT_MAX = 103,
+    // notice the Ai_Conversation over by task
+    VOLC_SERVICE_AI_CONVERSATION_OVER = 103,
+    VOLC_SERVICE_EVENT_MAX = 104,
 };
 
 enum {
