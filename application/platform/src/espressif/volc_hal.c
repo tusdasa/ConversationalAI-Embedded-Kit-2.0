@@ -1,6 +1,7 @@
 // Copyright (2025) Beijing Volcano Engine Technology Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "volc_hal_file.h"
 #include "volc_hal.h"
 #include "volc_osal.h"
 #include "driver/gpio.h"
@@ -42,6 +43,7 @@ int volc_hal_init(void) {
 #endif
         global_context = (volc_hal_context_t*) volc_osal_calloc(1,sizeof(volc_hal_context_t));
     }
+    volc_hal_file_system_init();
     __generate_device_name(global_context->device_name);
     return 0;
 }

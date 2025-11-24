@@ -9,6 +9,7 @@ set(VOLC_ESP_SRCS "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal.
                     "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_button.c"
                     "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_capture.c"
                     "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_display.c"
+                    "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_file.c"
                     "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_led.c"
                     "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_player.c"
 )
