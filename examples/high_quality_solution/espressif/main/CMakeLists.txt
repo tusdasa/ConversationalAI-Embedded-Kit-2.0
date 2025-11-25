@@ -5,7 +5,7 @@
 
 file(GLOB  APP_SRC  "./echoear_app/*.c")
 
-set(COMPONENT_SRCS "conv_ai_embedded_kit.c pipeline.c configuration_ap.c network.c" ${FRAMEWORK_SRCS} ${APP_SRC} ${SERVICE_SRCS})
+set(COMPONENT_SRCS "conv_ai_embedded_kit.c configuration_ap.c network.c" ${FRAMEWORK_SRCS} ${APP_SRC} ${SERVICE_SRCS})
 if (CONFIG_VOLC_WS_MODE)
     add_definitions(-DENABLE_WS_MODE)
 endif()

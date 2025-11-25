@@ -22,7 +22,7 @@
 #include "esp_sntp.h"
 
 #include "echoear_app/button_event.h"
-
+#include "audio_recorder.h"
 #include "freertos/semphr.h"
 #include "esp_err.h"
 #include "sdkconfig.h"
@@ -33,7 +33,6 @@
 #include "periph_wifi.h"
 #include "fatfs_stream.h"
 #include "i2s_stream.h"
-#include "pipeline.h"
 #include "cJSON.h"
 #include "network.h"
 #include "volc_service_manager.h"
