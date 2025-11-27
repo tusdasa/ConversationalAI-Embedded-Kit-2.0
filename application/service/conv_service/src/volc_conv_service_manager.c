@@ -6,6 +6,8 @@
 #include "volc_hal.h"
 #include "volc_osal.h"
 #include "volc_hal_display.h"
+#include "volc_hal_file.h"
+
 #include "volc_service_common.h"
 #include "volc_conv_service.h"
 #include "volc_conv_service_manager.h"
@@ -22,6 +24,26 @@ typedef struct volc_conv_service_manager {
 } volc_conv_service_manager_t;
 
 volc_conv_service_manager_t volc_conv_service_manager;
+
+static void play_welcome(){
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL) return;
+    volc_hal_player_t player =  g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO];
+    volc_hal_file_t* audioFile = volc_hal_file_open("/sdcard/wel.pcm", "rb");
+    // printf("play_welcome audioFile %p \n",audioFile);
+    if(audioFile == NULL) return;
+    char audio_data[160];
+    if(player){
+        int offset = 0;
+        uint64_t size = volc_hal_file_get_size(audioFile);
+        while(offset < size - 160){
+            volc_hal_file_read(audioFile,audio_data,160);
+            volc_hal_player_play_data(player, audio_data, 160);
+            // usleep(20*1000);
+            offset += 160;
+        }
+    }
+}
 
 static aios_ret_t __state_conversation(volc_conv_service_manager_t * const me, aios_event_t const * const e)
 {
@@ -51,6 +73,9 @@ static aios_ret_t __state_conversation(volc_conv_service_manager_t * const me, a
                 me->conv_thread_id = NULL;
             }          
             return AIOS_Ret_Handled;
+        case VOLC_SERVICE_AI_CONVERSATION_PLAT_WELCOME:
+            play_welcome();
+            return AIOS_Ret_Handled;
         // notice the Ai_Conversation over by task
         case VOLC_SERVICE_AI_CONVERSATION_OVER:
             if (me->conv_thread_id != NULL) {
@@ -68,6 +93,7 @@ static aios_ret_t __state_init(volc_conv_service_manager_t * const me, aios_even
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_INTERRUPT); // 订阅事件
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_QUIT); // 订阅事件
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_OVER); // 订阅事件
+    AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_PLAT_WELCOME); // 订阅事件
     me->status = 0;
     me->timer = NULL;
     me->conv_thread_id = NULL;

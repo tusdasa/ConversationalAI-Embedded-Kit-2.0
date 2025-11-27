@@ -16,6 +16,7 @@ enum {
     VOLC_SERVICE_AI_CONVERSATION_QUIT = 102,
     // notice the Ai_Conversation over by task
     VOLC_SERVICE_AI_CONVERSATION_OVER = 103,
+    VOLC_SERVICE_AI_CONVERSATION_PLAT_WELCOME = 104,
 
     // function_call event
     VOLC_FUNCTION_CALL_EXEC = 200,

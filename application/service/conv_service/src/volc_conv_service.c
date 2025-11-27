@@ -49,7 +49,7 @@ extern "C" {
   }\
 }"
 
-#define CONV_SERVICE_TIMEOUT 15
+#define CONV_SERVICE_TIMEOUT 60
 
 static char config_buf[1024] = {0};
 static volc_conv_service_t conv_service = {0};
@@ -132,7 +132,9 @@ static void __on_volc_audio_data(volc_engine_t handle, const void *data_ptr, siz
         LOGE("player pipeline is NULL");
         return;
     }
-    volc_hal_player_play_data(player_handle, data_ptr, data_len);
+    if(!is_interrupt){
+        volc_hal_player_play_data(player_handle, data_ptr, data_len);
+    }
 }
 
 static void __on_volc_video_data(volc_engine_t handle, const void *data_ptr, size_t data_len, volc_video_frame_info_t *info_ptr, void *user_data)
@@ -187,7 +189,7 @@ static void __on_subtitle_message_received(const cJSON* root) {
 static void __on_volc_message_data(volc_engine_t handle, const void *message, size_t size, volc_message_info_t *info_ptr, void *user_data)
 {
     static char message_buffer[4096];
-     if (size > 8) {
+     if (size > 8 && size < 4096) {
         memcpy(message_buffer, message, size);
         message_buffer[size] = 0;
         message_buffer[size + 1] = 0;
@@ -232,7 +234,6 @@ void conv_ai_service_init()
 
 void conv_ai_service_task(void *pvParameters)
 {
-    is_interrupt = false;
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
     char* status_str = NULL;
     if (g_hal_context == NULL) {
@@ -271,7 +272,7 @@ void conv_ai_service_task(void *pvParameters)
         .mode = VOLC_MODE_RTC,
         .bot_id = CONFIG_VOLC_BOT_ID,
     };
-
+    aios_event_pub(VOLC_SERVICE_AI_CONVERSATION_PLAT_WELCOME, NULL, NULL);
     ret = volc_start(conv_service.engine, &opt);
     if (ret != 0) {
         LOGE("volc_start failed, ret: %d", ret);
@@ -279,6 +280,7 @@ void conv_ai_service_task(void *pvParameters)
         goto CONV_AI_QUIT;
     }
     volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_STATUS, VOLC_DISPLAY_TEXT, "ai对话已连接");
+    is_interrupt = false;
 
     while (!is_interrupt) {
         sleep(1);
@@ -301,6 +303,7 @@ CONV_AI_QUIT:
         volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_STATUS, VOLC_DISPLAY_TEXT, status_str);
     }
     volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_SUBTITLE, VOLC_DISPLAY_TEXT, "");
+    conv_service.wait_time = 0;
     // just show the status: Ai对话已断开
     sleep(1);
     is_ready = false;
