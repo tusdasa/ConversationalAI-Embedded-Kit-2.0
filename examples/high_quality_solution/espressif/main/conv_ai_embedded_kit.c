@@ -38,6 +38,7 @@
 #include "volc_service_manager.h"
 #include "volc_service_common.h"
 #include "volc_conv_service_manager.h"
+#include "volc_function_call_service.h"
 
 #include "volc_hal.h"
 #include "volc_hal_display.h"
@@ -54,6 +55,7 @@ static  int wake_up_running = 1;
 void session_init(){
     volc_service_manager_init();
     volc_conv_service_manager_init();
+    function_call_service_init();
 }
 
 void Task(void* data){

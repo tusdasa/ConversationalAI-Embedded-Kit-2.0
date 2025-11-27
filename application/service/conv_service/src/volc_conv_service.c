@@ -50,11 +50,6 @@ extern "C" {
 }"
 
 #define CONV_SERVICE_TIMEOUT 15
-typedef struct {
-    volc_event_handler_t volc_event_handler;
-    volc_engine_t engine;
-    int wait_time;
-} volc_conv_service_t;
 
 static char config_buf[1024] = {0};
 static volc_conv_service_t conv_service = {0};
@@ -62,6 +57,11 @@ static bool is_ready = false;
 
 static volatile bool is_interrupt = false;
 static volc_hal_display_t global_display = NULL;
+
+volc_conv_service_t get_conv_ai_service()
+{
+    return conv_service;
+}
 
 static void __audio_capture_cb(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info){
     volc_audio_frame_info_t info = {0};
@@ -184,81 +184,6 @@ static void __on_subtitle_message_received(const cJSON* root) {
     }
 }
 
-static void __on_function_calling_message_received(const cJSON* root, const char* json_str) {
-    /*
-        {
-            "subscriber_user_id" : "",
-            "tool_calls" : 
-            [
-                {
-                    "function" : 
-                    {
-                        "arguments" : "{\\"location\\": \\"\\u5317\\u4eac\\u5e02\\"}",
-                        "name" : "get_current_weather"
-                    },
-                    "id" : "call_py400kek0e3pczrqdxgnb3lo",
-                    "type" : "function"
-                }
-            ]
-        }
-    */
-   
-    cJSON* tool_obj_arr = cJSON_GetObjectItem(root, "tool_calls");
-    cJSON* obji = NULL;
-    cJSON_ArrayForEach(obji, tool_obj_arr){
-        cJSON* id_obj = cJSON_GetObjectItem(obji, "id");
-        cJSON* function_obj = cJSON_GetObjectItem(obji, "function");
-        if (id_obj && function_obj) {
-            cJSON* arguments_obj = cJSON_GetObjectItem(function_obj, "arguments");
-            cJSON* name_obj = cJSON_GetObjectItem(function_obj, "name");
-            char* arguments_json_str = cJSON_GetStringValue(arguments_obj);
-            const char* func_name = cJSON_GetStringValue(name_obj);
-            const char* func_id = cJSON_GetStringValue(id_obj);
-            if (strcmp(func_name, "adjust_audio_val") == 0 && arguments_json_str) {               
-                cJSON *arguments_json = cJSON_Parse(arguments_json_str);
-                cJSON* action_obj = cJSON_GetObjectItem(arguments_json, "action");
-                const char* action = (action_obj->valuestring);
-                adjust_audio_val(action);
-                volc_send_text_to_agent(conv_service.engine,"别着急，我来给你调整音量",VOLC_AGENT_TYPE_TTS);
-                cJSON *fc_obj = cJSON_CreateObject();
-                cJSON_AddStringToObject(fc_obj, "ToolCallID", func_id);
-                cJSON_AddStringToObject(fc_obj, "Content", "音量已经调整了");
-                char *json_string = cJSON_Print(fc_obj);
-                static char fc_message_buffer[256] = {'f', 'u', 'n', 'c'};
-                int json_str_len = strlen(json_string);
-                fc_message_buffer[4] = (json_str_len >> 24) & 0xff;
-                fc_message_buffer[5] = (json_str_len >> 16) & 0xff;
-                fc_message_buffer[6] = (json_str_len >> 8) & 0xff;
-                fc_message_buffer[7] = (json_str_len >> 0) & 0xff;
-                memcpy(fc_message_buffer + 8, json_string, json_str_len);
-                cJSON_Delete(fc_obj);
-                volc_message_info_t info = {0};
-                info.is_binary = 1;
-                volc_send_message(conv_service.engine,fc_message_buffer, json_str_len + 8, &info);
-            }
-            if(strcmp(func_name,"stop_chat") == 0){
-                volc_send_text_to_agent(conv_service.engine,"好的拜拜",VOLC_AGENT_TYPE_TTS);
-                cJSON *fc_obj = cJSON_CreateObject();
-                cJSON_AddStringToObject(fc_obj, "ToolCallID", func_id);
-                cJSON_AddStringToObject(fc_obj, "Content", "对话即将结束");
-                char *json_string = cJSON_Print(fc_obj);
-                static char fc_message_buffer[256] = {'f', 'u', 'n', 'c'};
-                int json_str_len = strlen(json_string);
-                fc_message_buffer[4] = (json_str_len >> 24) & 0xff;
-                fc_message_buffer[5] = (json_str_len >> 16) & 0xff;
-                fc_message_buffer[6] = (json_str_len >> 8) & 0xff;
-                fc_message_buffer[7] = (json_str_len >> 0) & 0xff;
-                memcpy(fc_message_buffer + 8, json_string, json_str_len);
-                cJSON_Delete(fc_obj);
-                volc_message_info_t info = {0};
-                info.is_binary = 1;
-                volc_send_message(conv_service.engine, fc_message_buffer, json_str_len + 8, &info);
-                aios_event_pub(VOLC_SERVICE_AI_CONVERSATION_QUIT, NULL, NULL);
-            }
-        }    
-    }
-}
-
 static void __on_volc_message_data(volc_engine_t handle, const void *message, size_t size, volc_message_info_t *info_ptr, void *user_data)
 {
     static char message_buffer[4096];
@@ -274,7 +199,7 @@ static void __on_volc_message_data(volc_engine_t handle, const void *message, si
                 
             } else if (message_buffer[0] == 't' && message_buffer[1] == 'o' && message_buffer[2] == 'o' && message_buffer[3] == 'l') {
                 // function calling 消息
-                __on_function_calling_message_received(root, message_buffer + 8);
+                aios_event_pub(VOLC_FUNCTION_CALL_EXEC, root, NULL);
             }
         }
      }
