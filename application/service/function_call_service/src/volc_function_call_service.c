@@ -103,7 +103,6 @@ void function_call_service_init(void){
     aios_session_start(&g_volc_function_call_service.super, AIOS_STATE_CAST(__state_init));
 }
 
-
 #if __cplusplus
 }
 #endif

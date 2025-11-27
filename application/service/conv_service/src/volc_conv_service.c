@@ -175,6 +175,7 @@ static void __on_subtitle_message_received(const cJSON* root) {
                 sub_offset = sub_offset == 0 ? 0 : sub_offset -1;
                 volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,sub + sub_offset);
                 sub_offset = 0;
+                aios_event_pub(VOLC_LOCAL_LOGIC_PROCESS_SUBTITLE, sub, NULL);
             } else if(strlen(sub) - sub_offset > 18){
                 sub_offset = sub_offset == 0 ? 0 : sub_offset -1;
                 volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_SUBTITLE,VOLC_DISPLAY_TEXT,sub + sub_offset);
@@ -272,7 +273,7 @@ void conv_ai_service_task(void *pvParameters)
         .mode = VOLC_MODE_RTC,
         .bot_id = CONFIG_VOLC_BOT_ID,
     };
-    aios_event_pub(VOLC_SERVICE_AI_CONVERSATION_PLAT_WELCOME, NULL, NULL);
+    aios_event_pub(VOLC_LOCAL_LOGIC_PLAY_WELCOME, NULL, NULL);
     ret = volc_start(conv_service.engine, &opt);
     if (ret != 0) {
         LOGE("volc_start failed, ret: %d", ret);
@@ -315,7 +316,6 @@ CONV_AI_QUIT:
 void conv_ai_service_task_stop(void)
 {
     // sleep for AI Agent say goodbye
-    sleep(5);
     is_interrupt =  true;
 }
 
