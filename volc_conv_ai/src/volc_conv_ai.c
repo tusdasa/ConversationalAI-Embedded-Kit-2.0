@@ -526,7 +526,7 @@ int volc_send_message(volc_engine_t handle, const void* data_ptr, size_t data_le
     return ret;
 }
 
-int volc_send_text_to_agent(volc_engine_t handle, const char* text, volc_agent_type_e type) {
+int volc_send_text_to_agent(volc_engine_t handle, const char* text, volc_agent_type_e type, int interrupt_mode) {
     int ret = 0;
     volc_engine_impl_t* engine = (volc_engine_impl_t*)handle;
     if (handle == NULL) {
@@ -537,7 +537,7 @@ int volc_send_text_to_agent(volc_engine_t handle, const char* text, volc_agent_t
      switch (engine->mode) {
         case VOLC_MODE_RTC:
 #if defined(ENABLE_RTC_MODE)
-            ret = volc_rtc_send_text_to_agent(engine->rtc,text,type);
+            ret = volc_rtc_send_text_to_agent(engine->rtc,text,type,interrupt_mode);
 #else
             LOGE("RTC mode is not enabled");
             ret = -1;

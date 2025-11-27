@@ -58,7 +58,7 @@ static void parser_and_process_subtitle(char *subtitle)
     {
         if (!has_quit)
         {
-            volc_send_text_to_agent(conv_service.engine, "好的拜拜", VOLC_AGENT_TYPE_TTS);
+            volc_send_text_to_agent(conv_service.engine, "好的拜拜", VOLC_AGENT_TYPE_TTS, 1);
             has_quit = 1;
         }
     }

@@ -589,7 +589,7 @@ int volc_rtc_interrupt(volc_rtc_t rtc) {
     return ret;
 }
 
-int volc_rtc_send_text_to_agent(volc_rtc_t rtc, const char* text, volc_agent_type_e type){
+int volc_rtc_send_text_to_agent(volc_rtc_t rtc, const char* text, volc_agent_type_e type, int interrupt_mode){
     int ret = 0;
     cJSON * pJsn =  cJSON_CreateObject();
     uint8_t* msg_ctrl = NULL;
@@ -606,7 +606,7 @@ int volc_rtc_send_text_to_agent(volc_rtc_t rtc, const char* text, volc_agent_typ
         cJSON_AddStringToObject(pJsn,"Command","ExternalTextToLLM");
     }
     cJSON_AddStringToObject(pJsn,"Message",text);
-    cJSON_AddNumberToObject(pJsn,"InterruptMode",2);
+    cJSON_AddNumberToObject(pJsn,"InterruptMode",interrupt_mode);
     char* text_str =  cJSON_Print(pJsn);
     if (_build_binary_message(MAGIC_CONTROL, text_str, &msg_ctrl, &msg_len) != 0) {
         LOGE("build control message failed");

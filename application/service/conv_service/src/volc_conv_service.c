@@ -316,6 +316,7 @@ CONV_AI_QUIT:
 void conv_ai_service_task_stop(void)
 {
     // sleep for AI Agent say goodbye
+    sleep(1);
     is_interrupt =  true;
 }
 

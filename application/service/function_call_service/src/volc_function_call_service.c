@@ -61,7 +61,7 @@ static void __on_function_calling_message_received(const cJSON *root)
                 const char *action = (action_obj->valuestring);
                 adjust_audio_val(action);
                 volc_conv_service_t conv_service = get_conv_ai_service();
-                volc_send_text_to_agent(conv_service.engine, "别着急，我来给你调整音量", VOLC_AGENT_TYPE_TTS);
+                volc_send_text_to_agent(conv_service.engine, "别着急，我来给你调整音量", VOLC_AGENT_TYPE_TTS,2);
                 cJSON *fc_obj = cJSON_CreateObject();
                 cJSON_AddStringToObject(fc_obj, "ToolCallID", func_id);
                 cJSON_AddStringToObject(fc_obj, "Content", "音量已经调整了");
