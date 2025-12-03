@@ -12,6 +12,7 @@ set(VOLC_ESP_SRCS "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal.
                     "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_file.c"
                     "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_led.c"
                     "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/volc_hal_player.c"
+                    "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/basic_board.c"
 )
 set(VOLC_ESP_DISPLAY_SRCS "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/lvgl_source/echoear_font.c"
                           "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/lvgl_source/img_app_aiPhone.c"
@@ -23,19 +24,22 @@ set(VOLC_APP_SRCS ${VOLC_FRAMEWORK_SRCS}
 )
 
 set(VOLC_LVGL_SOURCE_INCS "${CMAKE_CURRENT_LIST_DIR}/../platform/src/espressif/lvgl_source/")
+set(VOLC_ASSETS_SOURCE_INCS "${CMAKE_CURRENT_LIST_DIR}/../../examples/high_quality_solution/espressif/main/")
+
 
 set(VOLC_APP_INCS ${VOLC_FRAMEWORK_INCS}
     ${VOLC_PLATFORM_INCS}
     ${VOLC_SERVICE_INCS}
     ${VOLC_UTIL_INCS}
     ${VOLC_LVGL_SOURCE_INCS}
+    ${VOLC_ASSETS_SOURCE_INCS}
 )
 
 idf_component_register(
     SRCS ${VOLC_APP_SRCS}
     INCLUDE_DIRS ${VOLC_APP_INCS}
     REQUIRES volc_conv_ai
-    PRIV_REQUIRES audio_pipeline audio_stream audio_hal esp_peripherals echoear lvgl button audio_recorder
+    PRIV_REQUIRES echoear lvgl button av_processor esp_board_manager hw_init esp_mmap_assets esp_emote_gfx
 )
 
 # Compiler flags

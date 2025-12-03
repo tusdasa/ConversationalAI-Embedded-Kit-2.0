@@ -1,0 +1,33 @@
+version: 0.4.8
+description: Board manager for ESP-GMF
+url: https://github.com/espressif/esp-gmf/tree/main/packages/esp_board_manager
+documentation: https://github.com/espressif/esp-gmf/blob/main/packages/esp_board_manager/README.md
+issues: https://github.com/espressif/esp-gmf/issues
+tags:
+- gmf
+- board_manager
+
+dependencies:
+  espressif/esp_codec_dev:
+    require: public
+    version: ~1.5
+    matches:
+      - if: "$CONFIG{ESP_BOARD_DEV_AUDIO_CODEC_SUPPORT} == True"
+
+  espressif/esp_lcd_touch:
+    require: public
+    version: "*"
+    matches:
+      - if: "$CONFIG{ESP_BOARD_DEV_LCD_TOUCH_I2C_SUPPORT} == True"
+
+  espressif/esp_io_expander:
+    require: public
+    version: ^1.0.1
+    matches:
+      - if: "$CONFIG{ESP_BOARD_DEV_GPIO_EXPANDER_SUPPORT} == True"
+
+  espressif/esp_video:
+    require: public
+    version: "^1.2.0"
+    rules:
+      - if: "$CONFIG{ESP_BOARD_DEV_CAMERA_SUPPORT} == True"

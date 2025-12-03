@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <inttypes.h>
+#include "iot_button.h"
 
 #include "esp_event.h"
 #include "esp_log.h"
@@ -20,28 +21,31 @@
 #include "esp_random.h"
 #include "esp_sntp.h"
 
+#include "echoear_app/button_event.h"
+
 #include "freertos/semphr.h"
 #include "esp_err.h"
 #include "sdkconfig.h"
-#include "audio_event_iface.h"
-#include "audio_common.h"
-#include "audio_sys.h"
-#include "board.h"
-#include "esp_peripherals.h"
-#include "periph_wifi.h"
-#include "fatfs_stream.h"
-#include "i2s_stream.h"
-#include "volc_hal_capture.h"
-#include "volc_hal_player.h"
+
+// #include "periph_wifi.h"
+// #include "fatfs_stream.h"
+
 #include "cJSON.h"
 #include "network.h"
-#include "volc_conv_ai.h"
-#define PRINT_TASK_INFO 0
+#include "volc_manager_service.h"
+#include "volc_service_common.h"
+#include "volc_conv_service.h"
+#include "local_logic_service.h"
+#include "volc_function_call_service.h"
 
-// #include "iot_button.h"
-// #include "button_gpio.h"
 #include "volc_hal.h"
-#include "volc_hal_button.h"
+#include "volc_hal_display.h"
+#include "volc_hal_capture.h"
+#include "volc_lvgl_source.h"
+// #include "board.h"
+#include "esp_mac.h"
+#include "esp_gmf_afe.h"
+#include "mmap_generate_eaf.h"
 #define STATS_TASK_PRIO 5
 
 static const char *TAG = "VolcConvAI";
@@ -62,67 +66,33 @@ static volatile bool is_interrupt = false;
   }\
 }"
 
-typedef struct
+void session_init(){
+    volc_service_manager_init();
+    volc_conv_service_manager_init();
+    function_call_service_init();
+    local_logic_service_init();
+}
+
+void Task(void* data){
+    aios_init(VOLC_SERVICE_EVENT_MAX);               // AIOS初始化
+    session_init();
+    aios_run();                                      // AIOS启动
+    return;
+}
+
+static void sys_monitor_task(void *pvParameters)
 {
-    volc_hal_player_t player;
-    volc_event_handler_t volc_event_handler;
-    volc_engine_t engine;
-} engine_context_t;
-
-static char config_buf[1024] = {0};
-static char config_audio[256] = {0};
-static engine_context_t engine_ctx = {0};
-static bool is_ready = false;
-
-static volc_hal_button_t button = NULL;
-
-static void _on_volc_event(volc_engine_t handle, volc_event_t *event, void *user_data)
-{
-    switch (event->code)
+    static char run_info[1024] = {0};
+    while (1)
     {
-    case VOLC_EV_CONNECTED:
-        is_ready = true;
-        ESP_LOGI(TAG, "Volc Engine connected\n");
-        break;
-    case VOLC_EV_DISCONNECTED:
-        is_ready = false;
-        ESP_LOGI(TAG, "Volc Engine disconnected\n");
-        break;
-    default:
-        ESP_LOGI(TAG, "Volc Engine event: %d\n", event->code);
-        break;
+        // vTaskGetRunTimeStats(run_info);
+        vTaskList(run_info);
+        printf("Task Runtime Stats:\n%s", run_info);
+        printf("--------------------------------\n");
+        // ESP_LOGI(TAG, "Task Runtime Stats:\n%s", run_info);
+        // ESP_LOGI(TAG, "--------------------------------\n");
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
-}
-
-static void _on_volc_conversation_status(volc_engine_t handle, volc_conv_status_e status, void *user_data)
-{
-    ESP_LOGI(TAG, "conversation status changed: %d\n", status);
-}
-
-static void _on_volc_audio_data(volc_engine_t handle, const void *data_ptr, size_t data_len, volc_audio_frame_info_t *info_ptr, void *user_data)
-{
-    int error = 0;
-    engine_context_t *demo = (engine_context_t *)user_data;
-    if (demo == NULL)
-    {
-        ESP_LOGE(TAG, "demo is NULL\n");
-        return;
-    }
-    if (demo->player == NULL)
-    {
-        ESP_LOGE(TAG, "player is NULL\n");
-        return;
-    }
-    volc_hal_player_play_data(demo->player, data_ptr, data_len);
-}
-
-static void _on_volc_video_data(volc_engine_t handle, const void *data_ptr, size_t data_len, volc_video_frame_info_t *info_ptr, void *user_data)
-{
-}
-
-static void _on_volc_message_data(volc_engine_t handle, const void *message, size_t size, volc_message_info_t *info_ptr, void *user_data)
-{
-    ESP_LOGI(TAG, "Received message: %.*s", (int)size, (const char *)message);
 }
 
 void initialize_sntp(void)
@@ -145,20 +115,6 @@ void initialize_sntp(void)
     tzset();
 }
 
-void print_current_time(void)
-{
-    time_t now;
-    struct tm timeinfo;
-    char strftime_buf[64];
-
-    time(&now);
-    localtime_r(&now, &timeinfo);
-
-    // 格式化输出时间
-    strftime(strftime_buf, sizeof(strftime_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-    ESP_LOGI(TAG, "Current time: %s", strftime_buf);
-}
-
 void wait_for_time_sync(void)
 {
     ESP_LOGI(TAG, "Waiting for time synchronization...");
@@ -166,12 +122,12 @@ void wait_for_time_sync(void)
     // 检查时间是否已同步（1970年之后）
     time_t now = 0;
     struct tm timeinfo = {0};
-    int retry_count = 15; // 最大重试次数
+    int retry_count = 5; // 最大重试次数
 
     while (timeinfo.tm_year < (2024 - 1900) && retry_count > 0)
     {
         ESP_LOGI(TAG, "Time not set yet, retrying... (%d)", retry_count);
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
         retry_count--;
@@ -179,7 +135,7 @@ void wait_for_time_sync(void)
 
     if (retry_count > 0)
     {
-        print_current_time();
+        // print_current_time();
     }
     else
     {
@@ -187,10 +143,22 @@ void wait_for_time_sync(void)
     }
 }
 
-static void wifi_ap_event_cb(volc_hal_button_t button, volc_hal_button_event_e event, void* user_data)
+static void rec_engine_cb(void *event, void *user_data)
 {
+     esp_gmf_afe_evt_t * e =  (esp_gmf_afe_evt_t *)event;
 
-    if (event == VOLC_BUTTON_LONG_PRESS_HOLD) {
+    if (ESP_GMF_AFE_EVT_WAKEUP_START == e->type) {
+#if CONFIG_LANGUAGE_WAKEUP_MODE
+        aios_event_pub(VOLC_SERVICE_AI_CONVERSATION,NULL,NULL);
+#endif // CONFIG_LANGUAGE_WAKEUP_MODE
+    }
+    return;
+}
+
+static void wifi_ap_event_cb(void *arg, void *data)
+{
+    button_event_t btn_evt = iot_button_get_event(arg);
+    if (btn_evt == BUTTON_LONG_PRESS_HOLD) {
         ESP_LOGW(TAG, "=== LONG PRESS DETECTED === Wi-Fi reset + restart");
         nvs_handle_t nvs;
         if (nvs_open("wifi", NVS_READWRITE, &nvs) == ESP_OK) {
@@ -205,162 +173,50 @@ static void wifi_ap_event_cb(volc_hal_button_t button, volc_hal_button_event_e e
         esp_restart();
     }
 }
-// static void button_init(void)
-// {
-//     button_config_t btn_config = { 0 };
-//     btn_config.type = BUTTON_TYPE_GPIO;
-//     btn_config.gpio_button_config.gpio_num = GPIO_NUM_0;
-//     btn_config.gpio_button_config.active_level = 0;
-    
-//     button_handle_t btn = NULL;
-//     btn = iot_button_create(&btn_config);
-//     iot_button_register_cb(btn, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);
-// }
 
-static void sys_monitor_task(void *pvParameters)
+void  hal_level_init()
 {
-    static char run_info[1024] = {0};
-    while (1)
-    {
-        vTaskGetRunTimeStats(run_info);
-        ESP_LOGI(TAG, "Task Runtime Stats:\n%s", run_info);
-        ESP_LOGI(TAG, "--------------------------------\n");
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
-}
 
-static uint64_t __get_time_ms(void)
-{
-    struct timespec now_time;
-    clock_gettime(CLOCK_REALTIME, &now_time);
-    return now_time.tv_sec * 1000 + now_time.tv_nsec / 1000000;
-}
+    // sntp init
+    initialize_sntp();
+    // wait for time sync
+    wait_for_time_sync();
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    volc_hal_capture_config_t config = {0};
+    config.media_type = VOLC_MEDIA_TYPE_AUDIO;
+    config.data_cb = NULL;
+    config.user_data = g_hal_context;
+    config.audio_wakeup_cb = (volc_hal_audio_wakeup_cb_t)rec_engine_cb;
+    volc_hal_capture_t capture = volc_hal_capture_create(&config);
 
-static int __volc_audio_codec(void) {
-#if (CONFIG_VOLC_AUDIO_G711A)
-    return VOLC_AUDIO_CODEC_TYPE_G711A;
-#else
-    return VOLC_AUDIO_CODEC_TYPE_PCM;
-#endif
-}
+    volc_hal_capture_start(capture,VOLC_AUDIO_MODE_WAKEUP);
 
-void volc_capture_audio_data(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info)
-{
-    // TODO: add audio data processing logic
-    volc_audio_frame_info_t info = {0};
-    info.data_type = frame_info->data_type;
-    info.commit = false;
-    volc_send_audio_data(engine_ctx.engine, data, len, &info);
-}
+    // button_init();
+    // button_register_cb(6, BUTTON_LONG_PRESS_HOLD, wifi_ap_event_cb, NULL);
 
-static void conv_ai_task(void *pvParameters)
-{
-    int audio_codec = __volc_audio_codec();
-    int error = 0;
-    // step 1: start audio capture & play
-    volc_hal_capture_config_t capture_config = {
-        .media_type = VOLC_MEDIA_TYPE_AUDIO,
-        .data_cb = volc_capture_audio_data,
-        .user_data = &engine_ctx,
-    };
-    volc_hal_capture_t pipeline = volc_hal_capture_create(&capture_config);
-    volc_hal_player_config_t player_config = {
-        .media_type = VOLC_MEDIA_TYPE_AUDIO,
-    };
-    volc_hal_player_t player = volc_hal_player_create(&player_config);
-    volc_hal_player_start(player);
-
-    // step 2: create ai agent
-    snprintf(config_buf, sizeof(config_buf), CONV_AI_CONFIG_FORMAT,
-             CONFIG_VOLC_INSTANCE_ID,
-             CONFIG_VOLC_PRODUCT_KEY,
-             CONFIG_VOLC_PRODUCT_SECRET,
-             CONFIG_VOLC_DEVICE_NAME,
-             audio_codec);
-    ESP_LOGI(TAG, "conv ai config: %s", config_buf);
-    volc_event_handler_t volc_event_handler = {
-        .on_volc_event = _on_volc_event,
-        .on_volc_conversation_status = _on_volc_conversation_status,
-        .on_volc_audio_data = _on_volc_audio_data,
-        .on_volc_video_data = _on_volc_video_data,
-        .on_volc_message_data = _on_volc_message_data,
-    };
-    engine_ctx.volc_event_handler = volc_event_handler;
-    engine_ctx.player = player;
-    error = volc_create(&engine_ctx.engine, config_buf, &engine_ctx.volc_event_handler, &engine_ctx);
-    if (error != 0)
-    {
-        ESP_LOGE(TAG, "Failed to create volc engine! error=%d", error);
-        return;
-    }
-
-    // step 3: start ai agent
-    volc_opt_t opt = {
-        .mode = VOLC_MODE_WS,
-        .bot_id = CONFIG_VOLC_BOT_ID,
-        .params = NULL,
-    };
-    error = volc_start(engine_ctx.engine, &opt);
-    if (error != 0)
-    {
-        ESP_LOGE(TAG, "Failed to start volc engine! error=%d", error);
-        volc_destroy(engine_ctx.engine);
-        return;
-    }
-
-    // int read_size = volc_capture_get_default_read_size(pipeline);
-    // uint8_t *audio_buffer = heap_caps_malloc(read_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    // if (!audio_buffer)
-    // {
-    //     ESP_LOGE(TAG, "Failed to alloc audio buffer!");
-    //     return;
-    // }
-    // step 4: start sending audio data
-//     volc_audio_frame_info_t info = {0};
-// #if (CONFIG_VOLC_AUDIO_G711A)
-//     info.data_type = VOLC_AUDIO_DATA_TYPE_G711A;
-// #else
-//     info.data_type = VOLC_AUDIO_DATA_TYPE_PCM;
-// #endif
-//     info.commit = false;
-    // while (1)
-    // {
-    //     int ret = volc_capture_read(pipeline, (char *)audio_buffer, read_size);
-    //     if (ret == read_size && is_ready)
-    //     {
-    //         // push_audio data
-    //         volc_send_audio_data(engine_ctx.engine, audio_buffer, read_size, &info);
-    //     }
-    // }
-    volc_hal_capture_start(pipeline,VOLC_AUDIO_MODE_CAPTURE);
-    while (1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-
-    volc_hal_button_destroy(button);
-
-    // step 5: stop audio capture
-    volc_hal_capture_destroy(pipeline);
-
-    // step 6: stop and destroy engine
-    volc_stop(engine_ctx.engine);
-    volc_destroy(engine_ctx.engine);
-
-    // step 7: stop audio play
-    volc_hal_player_destroy(player);
-    vTaskDelete(NULL);
+    // Allow other core to finish initialization
+    // vTaskDelay(pdMS_TO_TICKS(2000));
 }
 
 void app_main(void)
 {
+    // xTaskCreate(&sys_monitor_task, "sys_monitor_task", 4096, NULL, 5, NULL);
     volc_hal_init();
+    volc_hal_display_config_t display_config = {0};
+    volc_hal_display_create(&display_config);
+
+    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
+    if(g_hal_context == NULL){
+        return;
+    }
+    volc_hal_display_t global_display = g_hal_context->display_handle;
+   
     /* Initialize the default event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_log_level_set("*", ESP_LOG_WARN);
     esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set(TAG, ESP_LOG_INFO);
 
-    /* Initialize NVS flash for WiFi configuration */
+    // /* Initialize NVS flash for WiFi configuration */
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -369,23 +225,7 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-
     ESP_ERROR_CHECK(esp_netif_init());
-
-    // button
-    volc_hal_button_config_t button_config = {0};
-    button_config.gpio_num = GPIO_NUM_0;
-    button_config.active_level = 0;
-    button_config.event_cb = wifi_ap_event_cb;
-    button_config.user_data = &engine_ctx;
-    button = volc_hal_button_create(&button_config);
-    if (NULL == button) {
-        ESP_LOGE(TAG, "Failed to create button!");
-        return;
-    }
-
-    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
 
     bool connected = configure_network();
     if (connected == false)
@@ -393,23 +233,10 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to connect to network");
         return;
     }
+    xTaskCreate(&Task, "aios_task", 4096, NULL, 5, NULL);
 
-    // sntp init
-    initialize_sntp();
-    // wait for time sync
-    wait_for_time_sync();
-
-    audio_board_handle_t board_handle = audio_board_init();
-    audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
-    audio_hal_set_volume(board_handle->audio_hal, 50);
-    ESP_LOGI(TAG, "Starting again!\n");
-
-    // Allow other core to finish initialization
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
-    // Create and start stats task
-    xTaskCreate(&conv_ai_task, "conv_ai_task", 8192, NULL, STATS_TASK_PRIO, NULL);
-#if (PRINT_TASK_INFO != 0)
-    xTaskCreate(&sys_monitor_task, "sys_monitor_task", 4096, NULL, STATS_TASK_PRIO, NULL);
-#endif
+    hal_level_init();
+    int index = MMAP_EAF_HAPPY_EAF;
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&index);
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
 }

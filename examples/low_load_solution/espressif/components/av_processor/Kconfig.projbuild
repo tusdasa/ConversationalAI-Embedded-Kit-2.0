@@ -1,0 +1,82 @@
+menu "Audio/Video Processor Configuration"
+
+    # Media Dump Configuration
+    menu "Media Dump"
+        config MEDIA_DUMP_ENABLE
+            bool "Enable Media Dump"
+            default n
+            help
+                Enable media dump feature. When disabled, related options are hidden.
+
+        # Audio AEC Save Point
+        choice MEDIA_DUMP_AUDIO_POINT
+            prompt "Audio Save Mode (AEC point)"
+            depends on MEDIA_DUMP_ENABLE
+            default MEDIA_DUMP_AUDIO_NONE
+            help
+                Select which audio to save for media dump with respect to AEC processing.
+                Only one can be selected, or select None to disable both.
+
+            config MEDIA_DUMP_AUDIO_BEFORE_AEC
+                bool "Save Before AEC"
+                help
+                    Save raw microphone audio before AEC processing for media dump.
+
+            config MEDIA_DUMP_AUDIO_AFTER_AEC
+                bool "Save After AEC"
+                help
+                    Save audio after AEC processing for media dump.
+
+            config MEDIA_DUMP_AUDIO_NONE
+                bool "None"
+                help
+                    Do not save audio for media dump.
+        endchoice
+
+        config MEDIA_DUMP_DURATION_SEC
+            int "Dump Duration (seconds)"
+            depends on MEDIA_DUMP_ENABLE
+            default 20
+            range 1 3600
+            help
+                Maximum duration to capture media dump in seconds. Default 20s.
+
+        choice MEDIA_DUMP_SINK
+            prompt "Media Dump Output Method"
+            depends on MEDIA_DUMP_ENABLE
+            default MEDIA_DUMP_SINK_SDCARD
+            help
+                Select where to save media dump data.
+
+            config MEDIA_DUMP_SINK_UDP
+                bool "UDP"
+
+            config MEDIA_DUMP_SINK_SDCARD
+                bool "SD Card File"
+        endchoice
+
+        if MEDIA_DUMP_SINK_UDP
+            config MEDIA_DUMP_UDP_IP
+                string "UDP Destination IP"
+                default "192.168.1.100"
+                help
+                    Destination IPv4 address for UDP media dump.
+
+            config MEDIA_DUMP_UDP_PORT
+                int "UDP Destination Port"
+                default 5000
+                range 1 65535
+                help
+                    Destination UDP port for media dump.
+        endif
+
+        if MEDIA_DUMP_SINK_SDCARD
+            config MEDIA_DUMP_SDCARD_FILENAME
+                string "SD Card File Name"
+                default "/sdcard/media_dump.bin"
+                help
+                    File path on SD card to save media dump data. Ensure SD is mounted.
+        endif
+    endmenu
+
+endmenu

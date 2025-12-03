@@ -3,7 +3,7 @@
 
 file(GLOB  APP_SRC  "./echoear_app/*.c")
 
-set(COMPONENT_SRCS "conv_ai_embedded_kit.c pipeline.c configuration_ap.c network.c" )
+set(COMPONENT_SRCS "conv_ai_embedded_kit.c configuration_ap.c network.c" )
 
 if (CONFIG_PRINT_TASK_INFO)
     add_definitions(-DPRINT_TASK_INFO)
@@ -13,3 +13,14 @@ set(COMPONENT_ADD_INCLUDEDIRS .)
 set(COMPONENT_EMBED_TXTFILES assets/wifi_configuration_ap.html)
 
 register_component()
+
+set(assets_root "${CMAKE_CURRENT_LIST_DIR}/../assets")
+
+if(EXISTS "${assets_root}")
+    spiffs_create_partition_assets(eaf "${assets_root}" FLASH_IN_PROJECT
+        MMAP_FILE_SUPPORT_FORMAT ".eaf"
+        IMPORT_INC_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
+    add_dependencies(${COMPONENT_LIB} assets_eaf_bin)
+endif()
+
+set(COMPONENT_ADD_INCLUDEDIRS . ${FRAMEWORK_INC} ${SERVICE_INC})

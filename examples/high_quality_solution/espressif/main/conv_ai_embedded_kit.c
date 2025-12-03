@@ -22,22 +22,19 @@
 #include "esp_sntp.h"
 
 #include "echoear_app/button_event.h"
-#include "audio_recorder.h"
+
 #include "freertos/semphr.h"
 #include "esp_err.h"
 #include "sdkconfig.h"
-#include "audio_event_iface.h"
-#include "audio_common.h"
-#include "audio_sys.h"
-#include "esp_peripherals.h"
-#include "periph_wifi.h"
-#include "fatfs_stream.h"
-#include "i2s_stream.h"
+
+// #include "periph_wifi.h"
+// #include "fatfs_stream.h"
+
 #include "cJSON.h"
 #include "network.h"
-#include "volc_service_manager.h"
+#include "volc_manager_service.h"
 #include "volc_service_common.h"
-#include "volc_conv_service_manager.h"
+#include "volc_conv_service.h"
 #include "local_logic_service.h"
 #include "volc_function_call_service.h"
 
@@ -45,13 +42,17 @@
 #include "volc_hal_display.h"
 #include "volc_hal_capture.h"
 #include "volc_lvgl_source.h"
-#include "board.h"
+// #include "board.h"
 #include "esp_mac.h"
+#include "esp_gmf_afe.h"
+#include "mmap_generate_eaf.h"
+
+// #include "protocol_examples_common.h"
+
 
 #define STATS_TASK_PRIO 5
 
 static const char *TAG = "VolcConvAI";
-static  int wake_up_running = 1;
 
 void session_init(){
     volc_service_manager_init();
@@ -61,12 +62,9 @@ void session_init(){
 }
 
 void Task(void* data){
-    aios_init(VOLC_SERVICE_EVENT_MAX);                            // AIOS初始化
+    aios_init(VOLC_SERVICE_EVENT_MAX);               // AIOS初始化
     session_init();
-
-    // aios_led_init();                                 // LED状态机初始化
     aios_run();                                      // AIOS启动
-    // aios_run();
     return;
 }
 
@@ -117,7 +115,7 @@ void wait_for_time_sync(void)
     while (timeinfo.tm_year < (2024 - 1900) && retry_count > 0)
     {
         ESP_LOGI(TAG, "Time not set yet, retrying... (%d)", retry_count);
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
         retry_count--;
@@ -133,22 +131,16 @@ void wait_for_time_sync(void)
     }
 }
 
-static esp_err_t rec_engine_cb(audio_rec_evt_t *event, void *user_data)
+static void rec_engine_cb(void *event, void *user_data)
 {
-    if (AUDIO_REC_WAKEUP_START == event->type) {
+     esp_gmf_afe_evt_t * e =  (esp_gmf_afe_evt_t *)event;
+
+    if (ESP_GMF_AFE_EVT_WAKEUP_START == e->type) {
 #if CONFIG_LANGUAGE_WAKEUP_MODE
-        // printf("AUDIO_REC_WAKEUP_START \n");
         aios_event_pub(VOLC_SERVICE_AI_CONVERSATION,NULL,NULL);
 #endif // CONFIG_LANGUAGE_WAKEUP_MODE
-    } else if (AUDIO_REC_VAD_START == event->type) {
-    } else if (AUDIO_REC_VAD_END == event->type) {
-    } else if (AUDIO_REC_WAKEUP_END == event->type) {
-    #if CONFIG_LANGUAGE_WAKEUP_MODE
-        ESP_LOGI(TAG, "rec_engine_cb - AUDIO_REC_WAKEUP_END");
-    #endif // CONFIG_LANGUAGE_WAKEUP_MODE
-    } else {
     }
-    return ESP_OK;
+    return;
 }
 
 static void wifi_ap_event_cb(void *arg, void *data)
@@ -206,9 +198,6 @@ void app_main(void)
         return;
     }
     volc_hal_display_t global_display = g_hal_context->display_handle;
-
-    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&img_app_pos);
-    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"初始化中...");
    
     /* Initialize the default event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -225,15 +214,23 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
     ESP_ERROR_CHECK(esp_netif_init());
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
+     * Read "Establishing Wi-Fi or Ethernet Connection" section in
+     * examples/protocols/README.md for more information about this function.
+     */
+    // ESP_ERROR_CHECK(example_connect());
     bool connected = configure_network();
     if (connected == false)
     {
         ESP_LOGE(TAG, "Failed to connect to network");
         return;
     }
-    xTaskCreate(&Task, "conv_ai_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&Task, "aios_task", 4096, NULL, 5, NULL);
 
     hal_level_init();
+    int index = MMAP_EAF_HAPPY_EAF;
+    volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_MAIN,VOLC_DISPLAY_IMAGE,&index);
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
 }

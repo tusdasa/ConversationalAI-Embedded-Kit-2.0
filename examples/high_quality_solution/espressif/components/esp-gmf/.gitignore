@@ -1,0 +1,54 @@
+.config
+*.o
+*.pyc
+
+# gtags
+GTAGS
+GRTAGS
+GPATH
+
+# emacs
+.dir-locals.el
+
+# emacs temp file suffixes
+*~
+.#*
+\#*#
+# MacOS directory files
+.DS_Store
+
+# eclipse setting
+.settings
+
+# Example project files
+
+**/sdkconfig
+**/sdkconfig.old
+**/build
+**/managed_components
+**/dependencies.lock
+**/dist
+**/gen_bmgr_codes/
+
+# Doc build artifacts
+gmf_core/docs/*/_build/
+gmf_core/docs/*/doxygen-warning-log.txt
+gmf_core/docs/*/sphinx-warning-log.txt
+gmf_core/docs/*/sphinx-warning-log-sanitized.txt
+gmf_core/docs/*/xml/
+gmf_core/docs/*/xml_in/
+gmf_core/docs/*/man/
+gmf_core/docs/*/doxygen_sqlite3.db
+
+# Downloaded font files
+gmf_core/docs/_static/DejaVuSans.ttf
+gmf_core/docs/_static/NotoSansSC-Regular.otf
+
+# gcov coverage reports
+*.gcda
+*.gcno
+coverage.info
+coverage_report/
+
+.vscode
+.cache/

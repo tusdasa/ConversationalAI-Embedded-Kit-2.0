@@ -25,7 +25,7 @@ typedef enum {
 } volc_hal_audio_capture_mode_e;
 
 typedef void (*volc_hal_capture_data_cb_t)(volc_hal_capture_t capture, const void* data, int len, volc_hal_frame_info_t* frame_info);
-typedef int (*volc_hal_audio_wakeup_cb_t)(void *event, void *user_data);
+typedef void (*volc_hal_audio_wakeup_cb_t)(void *event, void *user_data);
 
 typedef struct volc_hal_capture_config {
     volc_media_type_e media_type;   // Media type

@@ -4,11 +4,19 @@
 #include "volc_hal.h"
 #include "volc_hal_display.h"
 #include "volc_lvgl_source.h"
+#include "hw_init.h"
+#include "esp_lcd_panel_ops.h"
+#include "esp_mmap_assets.h"
+#include "gfx.h"
 #include "lvgl.h"
 #include "bsp/echoear.h"
 #include <stddef.h>
 #include "volc_osal.h"
 #include  <string.h>
+#include "basic_board.h"
+
+
+#include "mmap_generate_eaf.h"
 
 #define LVGL_TASK_PRIORITY       1
 #define LVGL_TASK_CORE_ID        1
@@ -18,98 +26,261 @@
 #define LVGL_TIMER_INTERVAL      500
 
 typedef struct volc_hal_display_impl {
-    lv_obj_t* screen; 
-    lv_obj_t* display_obj[VOLC_DISPLAY_OBJ_MAX];
-    //  use for display subtitle
-    lv_timer_t* text_timer;
-    char subtitle_texts[64];
-    char status_texts[64];
     volatile bool   is_init;
+    /* Global state */
+    esp_lcd_panel_handle_t s_panel;
+    mmap_assets_handle_t s_assets;
+    gfx_handle_t s_gfx;
+    gfx_obj_t *s_anim;
+    gfx_obj_t *s_label;
+    esp_lcd_panel_io_handle_t display_io_handle;
+    int s_current_emote;
+    volc_osal_tid_t            display_thread;
 } volc_hal_display_impl_t;
 
 static volc_hal_display_impl_t* global_display_impl = NULL;
-volc_hal_display_t  global_display = NULL;
+extern basic_board_periph_t global_periph;
 
-static void __subtitle_update_cb(lv_timer_t* timer)
+static esp_lv_adapter_rotation_t __get_configured_rotation(void)
 {
-    volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
-    if(g_hal_context == NULL){
-        return;
+#if CONFIG_EXAMPLE_DISPLAY_ROTATION_0
+    return ESP_LV_ADAPTER_ROTATE_0;
+#elif CONFIG_EXAMPLE_DISPLAY_ROTATION_90
+    return ESP_LV_ADAPTER_ROTATE_90;
+#elif CONFIG_EXAMPLE_DISPLAY_ROTATION_180
+    return ESP_LV_ADAPTER_ROTATE_180;
+#elif CONFIG_EXAMPLE_DISPLAY_ROTATION_270
+    return ESP_LV_ADAPTER_ROTATE_270;
+#else
+    return ESP_LV_ADAPTER_ROTATE_0;
+#endif
+}
+
+/* ========== Asset Management ========== */
+
+static esp_err_t __mount_assets(void)
+{
+    mmap_assets_config_t cfg = {
+        .partition_label = "eaf",
+        .max_files = MMAP_EAF_FILES,
+        .checksum = MMAP_EAF_CHECKSUM,
+        .flags = {
+            .mmap_enable = 1,
+        },
+    };
+
+    return mmap_assets_new(&cfg, &global_display_impl->s_assets);
+}
+
+/* ========== GFX Emote Engine ========== */
+
+static void __gfx_flush_cb(gfx_handle_t handle, int x1, int y1, int x2, int y2, const void *data)
+{
+    if (global_display_impl->s_panel) {
+        esp_lcd_panel_draw_bitmap(global_display_impl->s_panel, x1, y1, x2, y2, data);
     }
-    volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)(g_hal_context->display_handle);
-    if(global_display_impl && global_display_impl->is_init){
-        lv_label_set_text(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE], global_display_impl->subtitle_texts);
-        lv_label_set_text(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS], global_display_impl->status_texts);
-        lv_obj_remove_flag(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE], LV_OBJ_FLAG_HIDDEN);
-        lv_obj_remove_flag(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS], LV_OBJ_FLAG_HIDDEN);
+    gfx_emote_flush_ready(handle, true);
+}
+
+static esp_err_t __init_gfx_engine(void)
+{
+    gfx_core_config_t cfg = {
+        .flush_cb = __gfx_flush_cb,
+        .user_data = global_display_impl->s_panel,
+        .flags = {
+            .swap = 1,
+            .double_buffer = 1,
+            .buff_dma = 0,
+            .buff_spiram = 1,
+        },
+        .h_res = HW_LCD_H_RES,
+        .v_res = HW_LCD_V_RES,
+        .fps = 30,
+        .task = {
+            .task_priority = 4,
+            .task_stack = 7168,
+            .task_affinity = -1,
+            .task_stack_caps = MALLOC_CAP_SPIRAM,
+        },
+        .buffers = {
+            .buf_pixels = HW_LCD_H_RES * HW_LCD_V_RES,
+        },
+    };
+
+    global_display_impl->s_gfx = gfx_emote_init(&cfg);
+    return global_display_impl->s_gfx ? ESP_OK : ESP_FAIL;
+}
+
+
+static esp_err_t __create_font_overlay(char* text)
+{
+    gfx_emote_lock(global_display_impl->s_gfx);
+    if(global_display_impl->s_label == NULL){
+        global_display_impl->s_label = gfx_label_create(global_display_impl->s_gfx);
+    }
+    if (!global_display_impl->s_label) {
+        gfx_emote_unlock(global_display_impl->s_gfx);
+        return ESP_ERR_NO_MEM;
+    }
+
+    /* Configure label: 200px width, positioned at top center */
+    gfx_obj_set_size(global_display_impl->s_label, 200, 40);
+    gfx_label_set_font(global_display_impl->s_label, (gfx_font_t)&echoear_font_16);
+    gfx_label_set_text(global_display_impl->s_label, text);
+    gfx_label_set_color(global_display_impl->s_label, GFX_COLOR_HEX(0xFFFFFF));
+    gfx_label_set_text_align(global_display_impl->s_label, GFX_TEXT_ALIGN_CENTER);
+    gfx_obj_align(global_display_impl->s_label, GFX_ALIGN_TOP_MID, 0, 10);
+
+    gfx_emote_unlock(global_display_impl->s_gfx);
+    return ESP_OK;
+}
+
+static esp_err_t __create_animation(void)
+{
+    /* Get EAF data from mmap */
+    const uint8_t *eaf_data = mmap_assets_get_mem(global_display_impl->s_assets, global_display_impl->s_current_emote);
+    int eaf_size = mmap_assets_get_size(global_display_impl->s_assets, global_display_impl->s_current_emote);
+
+    gfx_emote_lock(global_display_impl->s_gfx);
+
+    /* Create animation object */
+    global_display_impl->s_anim = gfx_anim_create(global_display_impl->s_gfx);
+    if (!global_display_impl->s_anim) {
+        gfx_emote_unlock(global_display_impl->s_gfx);
+        return ESP_FAIL;
+    }
+
+    /* Set animation source */
+    esp_err_t ret = gfx_anim_set_src(global_display_impl->s_anim, eaf_data, eaf_size);
+    if (ret != ESP_OK) {
+        gfx_obj_delete(global_display_impl->s_anim);
+        global_display_impl->s_anim = NULL;
+        gfx_emote_unlock(global_display_impl->s_gfx);
+        return ret;
+    }
+
+    /* Get animation dimensions from asset metadata */
+    int width = mmap_assets_get_width(global_display_impl->s_assets, global_display_impl->s_current_emote);
+    int height = mmap_assets_get_height(global_display_impl->s_assets, global_display_impl->s_current_emote);
+    if (width <= 0 || height <= 0) {
+        width = HW_LCD_H_RES;
+        height = HW_LCD_V_RES;
+    }
+
+    gfx_obj_set_size(global_display_impl->s_anim, width, height);
+    gfx_anim_set_mirror(global_display_impl->s_anim, true, 50);  /* Enable mirror for dual-eye display */
+    if(global_display_impl->s_current_emote == 0){
+        gfx_obj_align(global_display_impl->s_anim, GFX_ALIGN_LEFT_MID, 35, 0);
+    } else {
+        gfx_obj_align(global_display_impl->s_anim, GFX_ALIGN_CENTER, 0, 0);
+    }
+    gfx_anim_set_segment(global_display_impl->s_anim, 0, UINT32_MAX, 30, true);  /* All frames, 30 FPS, loop */
+
+    gfx_emote_unlock(global_display_impl->s_gfx);
+    return ESP_OK;
+}
+
+static void __emote_task(void *arg)
+{
+    /* Start animation playback */
+    gfx_emote_lock(global_display_impl->s_gfx);
+    gfx_anim_start(global_display_impl->s_anim);
+    gfx_emote_unlock(global_display_impl->s_gfx);
+
+    TickType_t last_switch_time = xTaskGetTickCount();
+
+    /* Keep task alive and switch emotes every 3 seconds */
+    while (1) {
+        TickType_t current_time = xTaskGetTickCount();
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
-static void __status_obj_init(volc_hal_display_impl_t* global_display_impl)
+static esp_err_t __switch_animation(int emote_index)
 {
-    if(global_display_impl && global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS] == NULL){
-        global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS] = lv_label_create(global_display_impl->screen);
-        lv_obj_set_style_text_font(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS], &echoear_font_16, 0);
-        lv_obj_align(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS], LV_ALIGN_TOP_MID, 0, 50);
-        lv_obj_set_height(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_STATUS], 30);  // 设置固定高度度
+    if (!global_display_impl->s_anim || !global_display_impl->s_gfx) {
+        return ESP_FAIL;
     }
-}
 
-static void __subtitle_obj_init(volc_hal_display_impl_t* global_display_impl)
-{
-    if(global_display_impl && global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE] == NULL){
-        global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE] = lv_label_create(global_display_impl->screen);
-        lv_obj_set_style_text_font(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE], &echoear_font_16, 0);
-        lv_obj_align(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE], LV_ALIGN_BOTTOM_MID, 0, -50);
-        lv_obj_set_height(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_SUBTITLE], 30);  // 设置固定高度度
+    /* Get new EAF data from mmap */
+    const uint8_t *eaf_data = mmap_assets_get_mem(global_display_impl->s_assets, emote_index);
+    int eaf_size = mmap_assets_get_size(global_display_impl->s_assets, emote_index);
+    if(global_display_impl->s_current_emote == emote_index) {
+        return ESP_OK;
     }
-    if(global_display_impl && global_display_impl->text_timer == NULL){
-        global_display_impl->text_timer = lv_timer_create(__subtitle_update_cb, LVGL_TIMER_INTERVAL, NULL);
-    }
-}
+    gfx_emote_lock(global_display_impl->s_gfx);
 
-static void __main_obj_init(volc_hal_display_impl_t* global_display_impl)
-{
-    if(global_display_impl && global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] == NULL){
-        global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] = lv_img_create(global_display_impl->screen);
-        //  size需要调整
-        lv_obj_set_size(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], 250, 250);
-        lv_obj_align(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], LV_ALIGN_CENTER, 0, 0);
+    /* Stop current animation */
+    gfx_anim_stop(global_display_impl->s_anim);
+
+    /* Update animation source */
+    esp_err_t ret = gfx_anim_set_src(global_display_impl->s_anim, eaf_data, eaf_size);
+    if (ret != ESP_OK) {
+        gfx_emote_unlock(global_display_impl->s_gfx);
+        return ret;
     }
+
+    /* Get animation dimensions from asset metadata */
+    int width = mmap_assets_get_width(global_display_impl->s_assets, emote_index);
+    int height = mmap_assets_get_height(global_display_impl->s_assets, emote_index);
+    if (width <= 0 || height <= 0) {
+        width = HW_LCD_H_RES;
+        height = HW_LCD_V_RES;
+    }
+
+    gfx_obj_set_size(global_display_impl->s_anim, width, height);
+    gfx_anim_set_mirror(global_display_impl->s_anim, true, 50);  /* Enable mirror for dual-eye display */
+    if(emote_index == 0){
+        gfx_obj_align(global_display_impl->s_anim, GFX_ALIGN_LEFT_MID, 35, 0);
+    } else {
+        gfx_obj_align(global_display_impl->s_anim, GFX_ALIGN_CENTER, 0, 0);
+    }
+
+    gfx_anim_set_segment(global_display_impl->s_anim, 0, UINT32_MAX, 30, true);  /* All frames, 30 FPS, loop */
+
+    /* Restart animation */
+    gfx_anim_start(global_display_impl->s_anim);
+
+    gfx_emote_unlock(global_display_impl->s_gfx);
+
+    global_display_impl->s_current_emote = emote_index;
+    return ESP_OK;
 }
 
 volc_hal_display_t volc_hal_display_create(volc_hal_display_config_t* config)
 {
+
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
     if(g_hal_context == NULL){
         return NULL;
     }
 
-    volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)volc_osal_calloc(1,sizeof(volc_hal_display_impl_t));
+    global_display_impl = (volc_hal_display_impl_t*)volc_osal_calloc(1,sizeof(volc_hal_display_impl_t));
     // init display
-    bsp_display_cfg_t cfg = {
-        .lvgl_port_cfg = {
-            .task_priority = LVGL_TASK_PRIORITY,
-            .task_stack = LVGL_TASK_STACK_SIZE,
-            .task_affinity = LVGL_TASK_CORE_ID,
-            .task_max_sleep_ms = LVGL_TASK_MAX_SLEEP_MS,
-            .task_stack_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT,
-            .timer_period_ms = LVGL_TASK_TIMER_PERIOD_MS,
-        },
-        .buffer_size = BSP_LCD_H_RES * 50,
-        .double_buffer = true,
-        .flags = {
-            .buff_spiram = false,
-        // .default_dummy_draw = default_dummy_draw, // Avoid white screen during initialization
-        },
-    };
-    lv_disp_t *disp = bsp_display_start_with_config(&cfg);
-    // bsp_display_brightness_init();
-    bsp_display_backlight_on();
-    global_display_impl->screen = lv_scr_act();
-    __subtitle_obj_init(global_display_impl);
-    __status_obj_init(global_display_impl);
-    __main_obj_init(global_display_impl);
+ 
+    esp_lv_adapter_rotation_t rotation = __get_configured_rotation();
+    /* Determine tear avoid mode based on LCD interface */
+#if CONFIG_EXAMPLE_LCD_INTERFACE_MIPI_DSI
+    esp_lv_adapter_tear_avoid_mode_t tear_avoid_mode = ESP_LV_ADAPTER_TEAR_AVOID_MODE_DEFAULT_MIPI_DSI;
+#elif CONFIG_EXAMPLE_LCD_INTERFACE_RGB
+    esp_lv_adapter_tear_avoid_mode_t tear_avoid_mode = ESP_LV_ADAPTER_TEAR_AVOID_MODE_DEFAULT_RGB;
+#else
+    esp_lv_adapter_tear_avoid_mode_t tear_avoid_mode = ESP_LV_ADAPTER_TEAR_AVOID_MODE_DEFAULT;
+#endif
+    // ESP_ERROR_CHECK(hw_lcd_init(&global_display_impl->s_panel, &global_display_impl->display_io_handle, tear_avoid_mode, rotation));
+    global_display_impl->s_panel = global_periph.lcd_pannel;
+    // printf("global_display_impl->s_panel %p \n",global_display_impl->s_panel);
+    ESP_ERROR_CHECK(__mount_assets());
+    __init_gfx_engine();
+    global_display_impl->s_current_emote = MMAP_EAF_BOOT_360_360_EAF;
+    __create_animation();
+    __create_font_overlay("");
+    volc_osal_thread_param_t param = {0};
+    snprintf(param.name, sizeof(param.name), "%s", "volc_capture_task");
+    param.stack_size = 8 * 1024;
+    param.priority = 4;
+    esp_err_t ret = volc_osal_thread_create(&global_display_impl->display_thread, &param, __emote_task, NULL);
+
     global_display_impl->is_init = true;
 
     g_hal_context->display_handle = (volc_hal_display_t)global_display_impl;
@@ -125,7 +296,8 @@ int volc_hal_display_set_brightness(volc_hal_display_t display, int brightness)
     if (brightness < 0) {
         brightness = 0;
     }
-    return bsp_display_brightness_set(brightness);
+    return 0;
+    // return bsp_display_brightness_set(brightness);
 }
 
 void volc_hal_display_destroy(volc_hal_display_t display)
@@ -137,8 +309,6 @@ void volc_hal_display_destroy(volc_hal_display_t display)
     volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)display;
     if(global_display_impl && global_display_impl->is_init){
         global_display_impl->is_init = false;
-        lv_timer_del(global_display_impl->text_timer);
-        lv_obj_del(global_display_impl->screen);
     }
     volc_osal_free(global_display_impl);
     global_display_impl = NULL;
@@ -155,20 +325,16 @@ int volc_hal_display_set_content(volc_hal_display_t display, volc_hal_display_ob
     volc_hal_display_impl_t* global_display_impl = (volc_hal_display_impl_t*)(g_hal_context->display_handle);
 
     if(obj == VOLC_DISPLAY_OBJ_STATUS && type == VOLC_DISPLAY_TEXT){
-        memset(global_display_impl->status_texts, 0, 64);
-        int count = strlen(content) >= 63 ? 63 : strlen(content);
-        memcpy(global_display_impl->status_texts,content,count);
+        __create_font_overlay(content);
     }
     if(obj == VOLC_DISPLAY_OBJ_SUBTITLE && type == VOLC_DISPLAY_TEXT){
-        memset(global_display_impl->subtitle_texts, 0, 64);
-        int count = strlen(content) >= 63 ? 63 : strlen(content);
-        memcpy(global_display_impl->subtitle_texts,content,count);
+        return -1;
     }
     if(obj == VOLC_DISPLAY_OBJ_MAIN && type == VOLC_DISPLAY_IMAGE){
-        lv_image_dsc_t* img_app_pos = (lv_image_dsc_t*)content;
-        // lv_obj_set_size(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], 112, 112);
-        lv_img_set_src(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN], img_app_pos);
-        lv_obj_remove_flag(global_display_impl->display_obj[VOLC_DISPLAY_OBJ_MAIN] ,LV_OBJ_FLAG_HIDDEN);
+       int index = *((int*)content);
+       if(index < MMAP_EAF_FILES){
+           __switch_animation(index);
+       }
     }
     return 0;
 }

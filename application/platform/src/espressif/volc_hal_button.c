@@ -59,14 +59,19 @@ volc_hal_button_t volc_hal_button_create(volc_hal_button_config_t* config)
     button_impl->config.event_cb = config->event_cb;
 
     button_config_t btn_config = {
-        .type = BUTTON_TYPE_GPIO,
-        .gpio_button_config.gpio_num = button_impl->config.gpio_num,
-        .gpio_button_config.active_level = button_impl->config.active_level,
+        // .type = BUTTON_TYPE_GPIO,
+        // .gpio_button_config.gpio_num = button_impl->config.gpio_num,
+        // .gpio_button_config.active_level = button_impl->config.active_level,
         .long_press_time = button_impl->config.long_press_ms,
         .short_press_time = button_impl->config.short_press_ms
     };
-
-    button_impl->btn = iot_button_create(&btn_config);
+    button_driver_t driver_config = {
+        .enable_power_save = button_impl->config.enable_power_save,
+        .get_key_level = NULL,
+        .enter_power_save = NULL,
+        .del = NULL,
+    };
+    iot_button_create(&btn_config,&driver_config,&button_impl->btn);
     if (NULL == button_impl->btn) {
         LOGE("button create failed");
         volc_osal_free(button_impl);
@@ -102,7 +107,7 @@ volc_hal_button_t volc_hal_button_create(volc_hal_button_config_t* config)
         adapter_data->button_impl = button_impl;
         adapter_data->event = events[i];
 
-        iot_button_register_cb(button_impl->btn, events[i], __button_event_cb_adapter, adapter_data);
+        iot_button_register_cb(button_impl->btn, events[i], NULL,__button_event_cb_adapter, adapter_data);
     }
     g_hal_context->button_handle = (volc_hal_button_t)button_impl;
     

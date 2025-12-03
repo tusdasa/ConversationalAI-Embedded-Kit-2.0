@@ -262,7 +262,7 @@ void aios_init(int event_size)
         printf("aios_init: event_mutex create fail\n");
         return;
     }
-    printf("event: %p\n", aios.event_mutex);
+    // printf("event: %p\n", aios.event_mutex);
 
     aios.init_end = 1;
     aios.time = 0;
@@ -271,7 +271,7 @@ void aios_init(int event_size)
         printf("aios_init: timer_mutex create fail\n");
         return;
     }
-    printf("timer: %p\n", aios.timer_mutex);
+    // printf("timer: %p\n", aios.timer_mutex);
 
     aios.sub_table = (uint32_t *)volc_osal_malloc(sizeof(uint32_t) * event_size);
     if (NULL == aios.sub_table) {

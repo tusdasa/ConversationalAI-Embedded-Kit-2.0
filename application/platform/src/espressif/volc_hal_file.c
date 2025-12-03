@@ -4,15 +4,15 @@
 #include <stdio.h>
 
 #include "volc_hal_file.h"
-#include "board.h"
-#include "esp_peripherals.h"
+// #include "board.h"
+// #include "esp_peripherals.h"
 #include "util/volc_log.h"
+#include "basic_board.h"
+#include "audio_processor.h"
 
 int volc_hal_file_system_init()
 {
-    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
-    ESP_ERROR_CHECK(audio_board_sdcard_init(set, SD_MODE_1_LINE));
+    return 0;
 }
 
 volc_hal_file_t volc_hal_file_open(char* file_name, char* mode)

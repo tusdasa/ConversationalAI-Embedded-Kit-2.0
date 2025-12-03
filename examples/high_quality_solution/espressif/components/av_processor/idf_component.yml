@@ -1,0 +1,31 @@
+dependencies:
+  espressif/gmf_ai_audio:
+    version: '~0.7'
+    public: true
+    rules:
+      - if: "target in [esp32p4, esp32s3, esp32]"
+  espressif/esp_audio_simple_player:
+    version: '^0.9.4'
+    public: true
+  espressif/gmf_loader:
+    version: "^0.7"
+    public: true
+  espressif/esp_video_codec:
+    public: true
+    version: "^0.5"
+  espressif/esp_capture:
+    public: true
+    version: "^0.7"
+  espressif/esp_audio_render:
+    public: true
+    version: "^0.7.0"
+
+description: Audio/Video Processor module for ESP-ADF
+documentation: https://github.com/espressif/esp-adf/blob/master/components/av_processor/README.md
+issues: https://github.com/espressif/esp-adf/issues
+repository: git://github.com/espressif/esp-adf.git
+tags:
+- gmf_multimedia
+- av_processor
+url: https://github.com/espressif/esp-adf/tree/master/components/av_processor
+version: 0.1.0

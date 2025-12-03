@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 #include <string.h>
 
+#include "volc_conv_ai.h"
+
 #include "volc_service_common.h"
 #include "aios.h"
-#include "volc_conv_service.h"
+#include "volc_conv.h"
 #include "volc_hal.h"
 #include "volc_hal_file.h"
 #include "volc_hal_player.h"
@@ -19,12 +21,11 @@ typedef struct volc_local_logic_service {
 
 volc_local_logic_service_t g_volc_local_logic_service;
 static int has_quit = 0;
-static void play_welcome(){
+static void __play_welcome(){
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
     if(g_hal_context == NULL) return;
     volc_hal_player_t player =  g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO];
     volc_hal_file_t* audioFile = volc_hal_file_open("/sdcard/wel.pcm", "rb");
-    // printf("play_welcome audioFile %p \n",audioFile);
     if(audioFile == NULL) return;
     char audio_data[160];
     if(player){
@@ -33,7 +34,6 @@ static void play_welcome(){
         while(offset < size - 160){
             volc_hal_file_read(audioFile,audio_data,160);
             volc_hal_player_play_data(player, audio_data, 160);
-            // usleep(20*1000);
             offset += 160;
         }
     }
@@ -41,7 +41,7 @@ static void play_welcome(){
     return;
 }
 
-static int has_substring(const char *haystack, const char *needle) {
+static int __has_substring(const char *haystack, const char *needle) {
     // 处理边界：子串为空串，按惯例返回包含（可根据需求调整）
     if (needle[0] == '\0') {
         return 1;
@@ -50,11 +50,11 @@ static int has_substring(const char *haystack, const char *needle) {
     return strstr(haystack, needle) != NULL ? 1 : 0;
 }
 
-static void parser_and_process_subtitle(char *subtitle)
+static void __parser_and_process_subtitle(char *subtitle)
 {
     volc_conv_service_t conv_service = get_conv_ai_service();
 
-    if (has_substring(subtitle, "退下吧") || has_substring(subtitle, "拜拜"))
+    if (__has_substring(subtitle, "退下吧") || __has_substring(subtitle, "拜拜"))
     {
         if (!has_quit)
         {
@@ -62,7 +62,7 @@ static void parser_and_process_subtitle(char *subtitle)
             has_quit = 1;
         }
     }
-    if (has_substring(subtitle, "好的拜拜"))
+    if (__has_substring(subtitle, "好的拜拜"))
     {
         aios_event_pub(VOLC_SERVICE_AI_CONVERSATION_QUIT, NULL, NULL);
         has_quit = 0;
@@ -73,10 +73,10 @@ static aios_ret_t __state_conversation(volc_local_logic_service_t * const me, ai
 {
     switch (e->id) {
         case VOLC_LOCAL_LOGIC_PLAY_WELCOME:
-            play_welcome();
+            __play_welcome();
             return AIOS_Ret_Handled;
         case VOLC_LOCAL_LOGIC_PROCESS_SUBTITLE:
-            parser_and_process_subtitle(e->data);
+            __parser_and_process_subtitle(e->data);
             return AIOS_Ret_Handled;
     }
 }
