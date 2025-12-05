@@ -13,11 +13,23 @@ extern "C" {
  */
 typedef void* volc_hal_display_t;
 
+/** This enumeration exists to map to distinct regions of the screen.
+ * Note: Typically, a set of screen display interfaces allows upper-layer callers
+ * to independently create and destroy regions for display purposes.
+ * However, to minimize the development effort of upper-layer business logic,
+ * we do not allow the business side to create and manage different screen regions on their own.
+ * Instead, different screen regions are divided and created during the execution of volc_hal_display_create().
+ * The business layer can only obtain different render layer objects,
+ * pass data to them, and perform rendering operations.
+ * For example, we divide the screen into a status bar(VOLC_DISPLAY_OBJ_STATUS), 
+ * main screen(VOLC_DISPLAY_OBJ_MAIN), and subtitle display bar(VOLC_DISPLAY_OBJ_SUBTITLE).
+ * You may define your own divisions, as all these codes are open-source and modifiable.
+ */
 typedef enum {
     VOLC_DISPLAY_OBJ_STATUS = 0, // Status display object
-    VOLC_DISPLAY_OBJ_MAIN,
+    VOLC_DISPLAY_OBJ_MAIN,          
     VOLC_DISPLAY_OBJ_SUBTITLE,   // Subtitle display object
-    // VOLC_DISPLAY_OBJ_EMOJI,      // Emoji display object
+    // VOLC_DISPLAY_OBJ_EMOJI,   // Emoji display object
     VOLC_DISPLAY_OBJ_MAX,        // Maximum display object count
 } volc_hal_display_obj_e;
 

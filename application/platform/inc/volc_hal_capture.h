@@ -36,7 +36,21 @@ typedef struct volc_hal_capture_config {
 
 /**
  * @brief Create a capture instance
- * 
+ * @details  To ensure a uniform rate for media capture data, we adopt the callback function approach:
+ *           frame-by-frame audio and video data is delivered asynchronously via callbacks,
+ *           instead of providing an active capture interface.
+ *           Therefore, during the function implementation, a capture thread needs to be created    
+ *           to asynchronously callback the data out.
+ * @note We do not specify specific media configurations (e.g., encoding format, sampling rate, or resolution).
+ *      This is because we expect all the aforementioned parameters to be uniquely determined and immutable across all scenarios.
+ *      Therefore, these values must be fixed at compile time; if your device supports multiple parameters,
+ *      macros should be used to select the desired ones at compile time.
+ *      We consider both voice wake-up and voice data capture to fall under the category of audio capture,
+ *      differing only in mode (internal pipeline).
+ *      For this reason, we do not redesign a separate module for voice wake-up;
+ *      instead, we add an additional mode specifically for voice wake-up.
+ *      Finally, note that acoustic echo cancellation (AEC) must be implemented for audio capture.
+ *      
  * @param config Capture configuration pointer
  * @return volc_hal_capture_t Capture instance pointer
  */
@@ -59,6 +73,7 @@ int volc_hal_capture_start(volc_hal_capture_t capture,volc_hal_audio_capture_mod
 
 /**
  * @brief Stop a capture instance
+ * @details you should start your capture thread within this function.
  * 
  * @param capture Capture instance pointer
  * @return int 0 if success, otherwise error code
@@ -67,6 +82,8 @@ int volc_hal_capture_stop(volc_hal_capture_t capture);
 
 /**
  * @brief Update audio capture configuration
+ * @note this function could help you update the capture config
+ *        Please check if it is thread-safe or not;
  * 
  * @param capture Capture instance pointer
  * @param config Capture configuration pointer

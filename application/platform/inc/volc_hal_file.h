@@ -11,6 +11,13 @@ extern "C" {
 #endif
 
 /**
+ * File systems may have different implementations on different devices,
+ * but we generally adhere to the ANSI C style.
+ * For devices without a file system, these interfaces may be left unimplemented
+ * as this is not mandatory.
+ */
+
+/**
  * @brief file instance pointer
  */
 typedef void* volc_hal_file_t;
