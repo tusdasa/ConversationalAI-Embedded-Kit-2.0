@@ -2,9 +2,11 @@
 <h1 align="center">ConversationalAI Embedded Kit 2.0</h1>
 
 ## 介绍
+
 硬件对话智能体，是一个端到端的智能硬件对话开发平台，兼容主流 IoT 芯片，可快速帮助开发者将低延迟、高自然的 AI 对话能力集成到智能硬件中，让智能硬件会听、会看、会说话，适用于 AI 玩具、智能穿戴设备(AI眼镜，智能手表等设备)、陪伴机器人、智能家居、教育硬件、具身智能设备等场景。
 
 ### 功能特性
+
 - **AI 实时语音对话**: 与智能体进行自然流畅的实时语音对话，如同与真人交流，支持随时插话打断。
 - **语音识别**: 将用户语音实时转写为文本，供大模型分析理解、生成字幕等。
 - **大模型处理**: 解析输入文本，并生成语义响应，驱动智能体对话逻辑。
@@ -15,20 +17,43 @@
 - **Function calling**: 允许大模型识别用户对话中的特定需求，并在内容的过程中调用外部函数实现天气查询、数学计算等功能。如处理实时数据检索、文件处理、数据库查询等，从而扩展智能体的服务能力和应用场景。
 - **实时字幕**: 实时将用户和智能体的对话内容转化为文字，可用于字幕渲染或存储。
 
+## 目录结构
+
+- **application**:  该目录下包含了ai对话智能体application的相关代码，包括：
+  
+  - Platform： 屏蔽硬件细节，使用户专注软件开发  （这部分需要和芯片厂商共建，目前我们现在喵伴上采坑）
+  - Framwork： 规范业务交互协议，使各个业务模块间能十分容易的交互
+  - service：  拆分不同的业务模块，每个业务模块都代表了 这一部分业务的最佳实践：
+- **volc_conv_ai**： 该目录下包含了与云端智能体建立网络连接相关的代码，对外是统一的建联接口（ volc_conv_ai/inc/volc_conv_ai.h ），底层建联有两种模式：
+  
+  - 低负载的建联方案(volc_conv_ai/src/transports/low_load)
+  - 高负载的建联方案（volc_conv_ai/src/transports/high_quality）。
+- **examples**:  该目录下给出了基于application和volc_conv_ai快速构建app的demo代码示例；
+
+
 ## 快速体验
 
 ### 步骤一：前置准备
+
 参考[快速入门](https://www.volcengine.com/docs/6348/1806625)开通服务并搭建硬件对话智能体。
 
 ### 步骤二：运行设备端
+
 请根据你使用的硬件开发板，选择对应的设备端部署教程：
+
 #### 低负载方案
+
 - 乐鑫 ESP32-S3-Korvo-2: [运行设备端_乐鑫](examples/low_load_solution/espressif/README.md)
 - MacOS方案: [运行设备端_MacOS](examples/low_load_solution/macos/README.md)
+
 #### 高性能方案
+
 - 乐鑫 ESP32-S3-Korvo-2: [运行设备端_乐鑫](examples/high_quality_solution/espressif/README.md)
 - MacOS方案: [运行设备端_MacOS](examples/high_quality_solution/macos/README.md)
 
 ## 技术交流
+
 欢迎加入我们的技术交流群或提出Issue，一起探讨技术，一起学习进步。
+
 <div align=center><img src="resource/image/tech_support.png" width="200"></div>
+
