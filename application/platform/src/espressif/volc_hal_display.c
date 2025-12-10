@@ -9,21 +9,12 @@
 #include "esp_mmap_assets.h"
 #include "gfx.h"
 #include "lvgl.h"
-#include "bsp/echoear.h"
 #include <stddef.h>
 #include "volc_osal.h"
 #include  <string.h>
 #include "basic_board.h"
 
-
 #include "mmap_generate_eaf.h"
-
-#define LVGL_TASK_PRIORITY       1
-#define LVGL_TASK_CORE_ID        1
-#define LVGL_TASK_STACK_SIZE     8 * 1024
-#define LVGL_TASK_MAX_SLEEP_MS   500
-#define LVGL_TASK_TIMER_PERIOD_MS 50
-#define LVGL_TIMER_INTERVAL      500
 
 typedef struct volc_hal_display_impl {
     volatile bool   is_init;
@@ -129,7 +120,7 @@ static esp_err_t __create_font_overlay(char* text)
     gfx_label_set_text(global_display_impl->s_label, text);
     gfx_label_set_color(global_display_impl->s_label, GFX_COLOR_HEX(0xFFFFFF));
     gfx_label_set_text_align(global_display_impl->s_label, GFX_TEXT_ALIGN_CENTER);
-    gfx_obj_align(global_display_impl->s_label, GFX_ALIGN_TOP_MID, 0, 10);
+    gfx_obj_align(global_display_impl->s_label, GFX_ALIGN_TOP_MID, 0, 30);
 
     gfx_emote_unlock(global_display_impl->s_gfx);
     return ESP_OK;
@@ -175,7 +166,6 @@ static esp_err_t __create_animation(void)
         gfx_obj_align(global_display_impl->s_anim, GFX_ALIGN_CENTER, 0, 0);
     }
     gfx_anim_set_segment(global_display_impl->s_anim, 0, UINT32_MAX, 30, true);  /* All frames, 30 FPS, loop */
-
     gfx_emote_unlock(global_display_impl->s_gfx);
     return ESP_OK;
 }
@@ -269,7 +259,6 @@ volc_hal_display_t volc_hal_display_create(volc_hal_display_config_t* config)
 #endif
     // ESP_ERROR_CHECK(hw_lcd_init(&global_display_impl->s_panel, &global_display_impl->display_io_handle, tear_avoid_mode, rotation));
     global_display_impl->s_panel = global_periph.lcd_pannel;
-    // printf("global_display_impl->s_panel %p \n",global_display_impl->s_panel);
     ESP_ERROR_CHECK(__mount_assets());
     __init_gfx_engine();
     global_display_impl->s_current_emote = MMAP_EAF_BOOT_360_360_EAF;

@@ -18,8 +18,6 @@ extern "C" {
 
 typedef struct volc_conv_service_manager {
     aios_session_t super;
-    bool status;
-    void* timer;
     volc_osal_tid_t conv_thread_id;
 } volc_conv_service_manager_t;
 
@@ -44,7 +42,6 @@ static aios_ret_t __state_conversation(volc_conv_service_manager_t * const me, a
             }
             return AIOS_Ret_Handled;
         case VOLC_SERVICE_AI_CONVERSATION_INTERRUPT:
-            me->status = 0;
             return AIOS_Ret_Handled;
         // control the Ai_Conversation task quit
         case VOLC_SERVICE_AI_CONVERSATION_QUIT:
@@ -70,8 +67,6 @@ static aios_ret_t __state_init(volc_conv_service_manager_t * const me, aios_even
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_INTERRUPT); // 订阅事件
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_QUIT); // 订阅事件
     AIOS_EVENT_SUB(VOLC_SERVICE_AI_CONVERSATION_OVER); // 订阅事件
-    me->status = 0;
-    me->timer = NULL;
     me->conv_thread_id = NULL;
     conv_ai_service_init();
     return AIOS_TRAN(__state_conversation);

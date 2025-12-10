@@ -6,12 +6,13 @@
 #include "volc_hal.h"
 #include "volc_hal_player.h"
 #include "volc_osal.h"
+#include "basic_board.h"
 
 #include "audio_processor.h"
 #include "esp_codec_dev.h"
 #include "util/volc_log.h"
 
-#define DEFAULT_AUDIO_VOL 80
+#define DEFAULT_AUDIO_VOL 70
 typedef struct {
     av_processor_decoder_config_t feeder_cfg;
     int volume;
@@ -31,7 +32,7 @@ typedef struct {
     volatile bool              is_started;
 } volc_player_impl_t;
 
-extern audio_manager_config_t global_audio_manager_config;
+extern basic_board_periph_t global_periph;
 
 volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
 {
@@ -44,8 +45,8 @@ volc_hal_player_t volc_hal_player_create(volc_hal_player_config_t* config)
     impl->media_type = config->media_type;
     switch (impl->media_type) {
         case VOLC_MEDIA_TYPE_AUDIO:
-            if(global_audio_manager_config.play_dev){
-                esp_codec_dev_set_out_vol(global_audio_manager_config.play_dev, DEFAULT_AUDIO_VOL);
+            if(global_periph.play_dev){
+                esp_codec_dev_set_out_vol(global_periph.play_dev, DEFAULT_AUDIO_VOL);
             }
             impl->audio_player_config.volume = DEFAULT_AUDIO_VOL;
             impl->audio_player_config.feeder_cfg.params.g711.audio_info.sample_rate = 16000;
@@ -80,7 +81,7 @@ int volc_hal_set_audio_player_volume(volc_hal_player_t player, int volume){
     }
     if(impl->media_type == VOLC_MEDIA_TYPE_AUDIO){
         impl->audio_player_config.volume = volume;
-        return esp_codec_dev_set_out_vol(global_audio_manager_config.play_dev, volume);
+        return esp_codec_dev_set_out_vol(global_periph.play_dev, volume);
     } else if(impl->media_type == VOLC_MEDIA_TYPE_VIDEO){
         LOGE("media type %d not supported set volume", impl->media_type);
         return -1;

@@ -15,6 +15,7 @@
 extern "C" {
 #endif
 
+static const char *welcome_audio_file_name = "/sdcard/wel.pcm";
 typedef struct volc_local_logic_service {
     aios_session_t super;
 } volc_local_logic_service_t;
@@ -25,7 +26,7 @@ static void __play_welcome(){
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
     if(g_hal_context == NULL) return;
     volc_hal_player_t player =  g_hal_context->player_handle[VOLC_HAL_PLAYER_AUDIO];
-    volc_hal_file_t* audioFile = volc_hal_file_open("/sdcard/wel.pcm", "rb");
+    volc_hal_file_t* audioFile = volc_hal_file_open(welcome_audio_file_name, "rb");
     if(audioFile == NULL) return;
     char audio_data[160];
     if(player){

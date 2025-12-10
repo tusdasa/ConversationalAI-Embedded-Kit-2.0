@@ -26,10 +26,6 @@
 #include "freertos/semphr.h"
 #include "esp_err.h"
 #include "sdkconfig.h"
-
-// #include "periph_wifi.h"
-// #include "fatfs_stream.h"
-
 #include "cJSON.h"
 #include "network.h"
 #include "volc_manager_service.h"
@@ -42,13 +38,9 @@
 #include "volc_hal_display.h"
 #include "volc_hal_capture.h"
 #include "volc_lvgl_source.h"
-// #include "board.h"
 #include "esp_mac.h"
 #include "esp_gmf_afe.h"
 #include "mmap_generate_eaf.h"
-
-// #include "protocol_examples_common.h"
-
 
 #define STATS_TASK_PRIO 5
 
@@ -61,7 +53,7 @@ void session_init(){
     local_logic_service_init();
 }
 
-void Task(void* data){
+void aios_task(void* data){
     aios_init(VOLC_SERVICE_EVENT_MAX);               // AIOS初始化
     session_init();
     aios_run();                                      // AIOS启动
@@ -176,7 +168,6 @@ void  hal_level_init()
     config.user_data = g_hal_context;
     config.audio_wakeup_cb = (volc_hal_audio_wakeup_cb_t)rec_engine_cb;
     volc_hal_capture_t capture = volc_hal_capture_create(&config);
-
     volc_hal_capture_start(capture,VOLC_AUDIO_MODE_WAKEUP);
 
     button_init();
@@ -227,7 +218,7 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to connect to network");
         return;
     }
-    xTaskCreate(&Task, "aios_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&aios_task, "aios_task", 4096, NULL, 5, NULL);
 
     hal_level_init();
     int index = MMAP_EAF_HAPPY_EAF;

@@ -12,14 +12,13 @@ enum {
     // Ai_Conversation event:
     VOLC_SERVICE_AI_CONVERSATION_START = 100,
     VOLC_SERVICE_AI_CONVERSATION_INTERRUPT = 101,
-    // control the Ai_Conversation task quit
-    VOLC_SERVICE_AI_CONVERSATION_QUIT = 102,
-    // notice the Ai_Conversation over by task
-    VOLC_SERVICE_AI_CONVERSATION_OVER = 103,
+    VOLC_SERVICE_AI_CONVERSATION_QUIT = 102,  // control the Ai_Conversation task quit
+    VOLC_SERVICE_AI_CONVERSATION_OVER = 103,  // notice the Ai_Conversation over by task
 
-    // function_call event
+    // function_call event:
     VOLC_FUNCTION_CALL_EXEC = 200,
 
+    // local logic event:
     VOLC_LOCAL_LOGIC_PLAY_WELCOME = 300,
     VOLC_LOCAL_LOGIC_PROCESS_SUBTITLE = 301,
 

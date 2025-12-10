@@ -9,6 +9,7 @@
 
 #include "audio_processor.h"
 #include "av_processor_type.h"
+#include "basic_board.h"
 
 #include "esp_codec_dev.h"
 #include "util/volc_log.h"
@@ -42,7 +43,7 @@ typedef struct {
     volatile bool              is_started;
 } volc_hal_capture_impl_t;
 
-extern audio_manager_config_t global_audio_manager_config;
+extern basic_board_periph_t global_periph;
 
 static int __volc_capture_get_default_read_size(volc_hal_capture_t capture)
 {
@@ -104,7 +105,7 @@ volc_hal_capture_t volc_hal_capture_create(volc_hal_capture_config_t *config)
     capture->data_cb = config->data_cb;
     capture->audio_wakeup_cb = config->audio_wakeup_cb;
     capture->user_data = config->user_data;
-    esp_codec_dev_set_in_gain(global_audio_manager_config.rec_dev, 52.0);
+    esp_codec_dev_set_in_gain(global_periph.rec_dev, 52.0);
     switch (capture->media_type)
     {
     case VOLC_MEDIA_TYPE_AUDIO:

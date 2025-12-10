@@ -56,9 +56,8 @@ extern "C" {
 
 static char config_buf[1024] = {0};
 static volc_conv_service_t conv_service = {0};
-static bool is_ready = false;
 
-static volatile bool is_interrupt = false;
+static volatile bool is_stop = false;
 static volc_hal_display_t global_display = NULL;
 
 volc_conv_service_t get_conv_ai_service()
@@ -72,7 +71,7 @@ static void __audio_capture_cb(volc_hal_capture_t capture, const void* data, int
     volc_audio_frame_info_t info = {0};
     info.commit = false;
     info.data_type =  frame_info->data_type;
-    if(!is_interrupt)
+    if(!is_stop)
     {
         volc_send_audio_data(conv_service.engine, data, len, &info);
         // if(audioFile == NULL){
@@ -87,15 +86,13 @@ static void __on_volc_event(volc_engine_t handle, volc_event_t *event, void *use
     switch (event->code)
     {
     case VOLC_EV_CONNECTED:
-        is_ready = true;
-        printf("Volc Engine connected\n");
+        LOGI("Volc Engine connected");
         break;
     case VOLC_EV_DISCONNECTED:
-        is_ready = false;
-        printf( "Volc Engine disconnected\n");
+        LOGI( "Volc Engine disconnected");
         break;
     default:
-        printf("Volc Engine event: %d\n", event->code);
+        LOGI("Volc Engine event: %d", event->code);
         break;
     }
 }
@@ -135,7 +132,7 @@ static void __on_volc_audio_data(volc_engine_t handle, const void *data_ptr, siz
     int error = 0;
     volc_hal_context_t* g_hal_context = volc_get_global_hal_context();
     if (g_hal_context == NULL) {
-        printf("volc_get_global_hal_context failed\n");
+        LOGE("volc_get_global_hal_context failed");
         return;
     }
 
@@ -146,7 +143,7 @@ static void __on_volc_audio_data(volc_engine_t handle, const void *data_ptr, siz
         LOGE("player pipeline is NULL");
         return;
     }
-    if(!is_interrupt){
+    if(!is_stop){
         volc_hal_player_play_data(player_handle, data_ptr, data_len);
     }
 }
@@ -297,9 +294,9 @@ void conv_ai_service_task(void *pvParameters)
         goto CONV_AI_QUIT;
     }
     volc_hal_display_set_content(global_display, VOLC_DISPLAY_OBJ_STATUS, VOLC_DISPLAY_TEXT, "ai对话已连接");
-    is_interrupt = false;
+    is_stop = false;
 
-    while (!is_interrupt) {
+    while (!is_stop) {
         sleep(1);
         conv_service.wait_time++;
         if(conv_service.wait_time >= CONV_SERVICE_TIMEOUT){
@@ -325,7 +322,6 @@ CONV_AI_QUIT:
     conv_service.wait_time = 0;
     // just show the status: Ai对话已断开
     sleep(1);
-    is_ready = false;
     volc_hal_capture_start(g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO],VOLC_AUDIO_MODE_WAKEUP);
     volc_hal_display_set_content(global_display,VOLC_DISPLAY_OBJ_STATUS,VOLC_DISPLAY_TEXT,"请说 hi 乐鑫,启动ai对话");
     volc_osal_thread_exit(NULL);
@@ -335,7 +331,7 @@ void conv_ai_service_task_stop(void)
 {
     // sleep for AI Agent say goodbye
     sleep(1);
-    is_interrupt =  true;
+    is_stop =  true;
 }
 
 #if __cplusplus

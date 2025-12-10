@@ -1,8 +1,5 @@
 // Copyright (2025) Beijing Volcano Engine Technology Ltd.
 // SPDX-License-Identifier: Apache-2.0
-
-#include <stdio.h>
-
 #include "volc_hal.h"
 #include "volc_manager_service.h"
 #include "volc_conv_service.h"
