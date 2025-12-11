@@ -20,6 +20,26 @@ extern "C" {
 #define AV_PROCESSOR_FOURCC(a, b, c, d) ((uint32_t)(a) | ((uint32_t)(b) << 8) | ((uint32_t)(c) << 16) | ((uint32_t)(d) << 24))
 
 /**
+ * @brief  Format string for printing FourCC value as characters and hex
+ */
+#define AV_PROCESSOR_FOURCC_FMT "%c%c%c%c (0x%08x)"
+
+/**
+ * @brief  Arguments for printing FourCC value
+ * 
+ * @param fourcc  FourCC value to print
+ * 
+ * @note  Use with AV_PROCESSOR_FOURCC_FMT in printf-style functions:
+ *        ESP_LOGE(TAG, "Format: " AV_PROCESSOR_FOURCC_FMT, AV_PROCESSOR_FOURCC_ARGS(format));
+ */
+#define AV_PROCESSOR_FOURCC_ARGS(fourcc) \
+    (char)((fourcc) & 0xFF), \
+    (char)(((fourcc) >> 8) & 0xFF), \
+    (char)(((fourcc) >> 16) & 0xFF), \
+    (char)(((fourcc) >> 24) & 0xFF), \
+    (fourcc)
+
+/**
  * @brief  AV Processor format ID definition
  *
  * @note  Aligned with GMF FourCC definition for audio video codecs and formats

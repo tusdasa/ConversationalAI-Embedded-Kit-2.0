@@ -286,7 +286,9 @@ void conv_ai_service_task(void *pvParameters)
         .mode = VOLC_MODE_RTC,
         .bot_id = CONFIG_VOLC_BOT_ID,
     };
+#if defined ENABLE_PLAY_WELCOME
     aios_event_pub(VOLC_LOCAL_LOGIC_PLAY_WELCOME, NULL, NULL);
+#endif    
     ret = volc_start(conv_service.engine, &opt);
     if (ret != 0) {
         LOGE("volc_start failed, ret: %d", ret);

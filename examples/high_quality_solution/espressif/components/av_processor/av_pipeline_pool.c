@@ -60,7 +60,6 @@ esp_err_t av_audio_feeder_pool_init(esp_gmf_pool_handle_t *pool, const av_proces
             break;
             
         case AV_PROCESSOR_FORMAT_ID_G711A: {
-           
             dec_cfg.dec_type = ESP_AUDIO_SIMPLE_DEC_TYPE_G711A;
             esp_g711_dec_cfg_t g711_dec_cfg = {0};
             g711_dec_cfg.channel = decoder_cfg ? decoder_cfg->params.g711.audio_info.channels : 1;
@@ -114,8 +113,7 @@ esp_err_t av_audio_feeder_pool_init(esp_gmf_pool_handle_t *pool, const av_proces
             break;
             
         default:
-            ESP_LOGE(TAG, "Unsupported format: %d", format);
-
+            ESP_LOGE(TAG, "Unsupported format: " AV_PROCESSOR_FOURCC_FMT, AV_PROCESSOR_FOURCC_ARGS(format));
             return ESP_ERR_NOT_SUPPORTED;
     }
     

@@ -56,10 +56,11 @@ dependencies:
     version: "*"
     public: true
 
-  gmf_audio:
-    override_path: ../components/esp-gmf/elements/gmf_audio
+  # gmf_audio:
+  #   override_path: ../components/esp-gmf/elements/gmf_audio
   esp_board_manager: 
-    override_path: ../components/
+    version: "*"
+    public: true
 
   # protocol_examples_common:
   #   path: ${IDF_PATH}/examples/common_components/protocol_examples_common

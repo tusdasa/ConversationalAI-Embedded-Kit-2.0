@@ -82,7 +82,7 @@ static void __volc_audio_capture_task(void *arg)
         #endif
         }
     }
-    audio_recorder_pause();
+    // audio_recorder_pause();
     if (impl->capture_thread) {
         volc_osal_thread_destroy(impl->capture_thread);
         impl->capture_thread = NULL;
@@ -211,8 +211,8 @@ int volc_hal_capture_stop(volc_hal_capture_t capture)
     impl->is_started = false;
     switch (impl->media_type) {
         case VOLC_MEDIA_TYPE_AUDIO:
-            audio_recorder_pause();
-            audio_recorder_resume();
+            // audio_recorder_pause();
+            // audio_recorder_resume();
             audio_recorder_close();
             impl->audio_capture_config.state = INITED;
             break;

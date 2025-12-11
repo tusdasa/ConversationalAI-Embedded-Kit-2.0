@@ -61,4 +61,5 @@ dependencies:
   gmf_audio:
     override_path: ../components/esp-gmf/elements/gmf_audio
   esp_board_manager: 
-    override_path: ../components/
+    version: "*"
+    public: true

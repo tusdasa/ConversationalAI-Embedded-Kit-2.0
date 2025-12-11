@@ -80,7 +80,7 @@ extern "C" {
     },                                           \
     .recorder_task_config  = {                   \
         .task_stack = 4096,                      \
-        .task_prio = 5,                          \
+        .task_prio = 10,                         \
         .task_core = 0,                          \
         .task_stack_in_ext = true                \
     },                                           \

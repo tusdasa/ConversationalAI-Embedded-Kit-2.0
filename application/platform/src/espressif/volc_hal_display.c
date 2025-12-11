@@ -7,6 +7,8 @@
 #include "hw_init.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_mmap_assets.h"
+#include "esp_board_manager.h"
+#include "dev_ledc_ctrl.h"
 #include "gfx.h"
 #include "lvgl.h"
 #include <stddef.h>
@@ -285,6 +287,25 @@ int volc_hal_display_set_brightness(volc_hal_display_t display, int brightness)
     if (brightness < 0) {
         brightness = 0;
     }
+    
+    periph_ledc_handle_t *ledc_handle = NULL;
+
+    esp_board_manager_get_device_handle("lcd_brightness", (void **)&ledc_handle);
+
+    dev_ledc_ctrl_config_t *dev_ledc_cfg = NULL;
+    esp_err_t config_ret = esp_board_manager_get_device_config("lcd_brightness", (void*)&dev_ledc_cfg);
+    if (config_ret != ESP_OK) {
+        return -1;
+    }
+    // ESP_LOGI(TAG, "dev_ledc_cfg.ledc_name: %s, name: %s, type: %s", dev_ledc_cfg->ledc_name, dev_ledc_cfg->name, dev_ledc_cfg->type);
+    periph_ledc_config_t *ledc_config = NULL;
+    esp_board_manager_get_periph_config(dev_ledc_cfg->ledc_name, (void**)&ledc_config);
+    uint32_t duty = (brightness * ((1 << (uint32_t)ledc_config->duty_resolution) - 1)) / 100;
+    // ESP_LOGI(TAG, "duty_cycle: %" PRIu32 ", speed_mode: %d, channel: %d, duty_resolution: %d", duty, ledc_handle->speed_mode, ledc_handle->channel, ledc_config->duty_resolution);
+    // ESP_BOARD_RETURN_ON_ERROR(ledc_set_duty(ledc_handle->speed_mode, ledc_handle->channel, duty), TAG, "LEDC set duty failed");
+    ledc_set_duty(ledc_handle->speed_mode, ledc_handle->channel, duty);
+    // ESP_BOARD_RETURN_ON_ERROR(ledc_update_duty(ledc_handle->speed_mode, ledc_handle->channel), TAG, "LEDC update duty failed");
+    ledc_update_duty(ledc_handle->speed_mode, ledc_handle->channel);
     return 0;
     // return bsp_display_brightness_set(brightness);
 }

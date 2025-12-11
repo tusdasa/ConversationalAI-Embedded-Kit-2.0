@@ -83,6 +83,7 @@ typedef struct {
     esp_gmf_pool_handle_t          pool;
     afe_config_t                  *afe_cfg;
     audio_recorder_config_t        config;
+    UBaseType_t basic_priority
 } audio_recorder_t;
 
 typedef struct {
@@ -156,7 +157,7 @@ static inline esp_opus_enc_frame_duration_t convert_opus_enc_frame_duration(int 
         case 120:
             return ESP_OPUS_ENC_FRAME_DURATION_120_MS;
         default:
-            return -1;
+            return ESP_OPUS_ENC_FRAME_DURATION_ARG;
     }
 }
 
@@ -230,12 +231,23 @@ static esp_err_t recorder_pipeline_event(esp_gmf_event_pkt_t *event, void *ctx)
 
 static int recorder_outport_acquire_write(void *handle, esp_gmf_data_bus_block_t *blk, int wanted_size, int block_ticks)
 {
-    return esp_gmf_fifo_acquire_write(audio_recorder.fifo, blk, wanted_size, block_ticks);
+    int res = esp_gmf_fifo_acquire_write(audio_recorder.fifo, blk, wanted_size, block_ticks);
+    if (res != ESP_OK) {
+        ESP_LOGE(TAG, "%s | %d", __func__, __LINE__);
+        ESP_LOGW(TAG, "Failed to acquire write from recorder FIFO (%d)", res);
+    }
+
+    return res;
 }
 
 static int recorder_outport_release_write(void *handle, esp_gmf_data_bus_block_t *blk, int block_ticks)
 {
-    return esp_gmf_fifo_release_write(audio_recorder.fifo, blk, block_ticks);
+    int res = esp_gmf_fifo_release_write(audio_recorder.fifo, blk, block_ticks);
+    if (res != ESP_OK) {
+        ESP_LOGE(TAG, "%s | %d", __func__, __LINE__);
+        ESP_LOGW(TAG, "Failed to release write from recorder FIFO (%d)", res);
+    }
+    return res;
 }
 
 static int recorder_inport_acquire_read(void *handle, esp_gmf_data_bus_block_t *blk, int wanted_size, int block_ticks)
@@ -644,7 +656,7 @@ static int feeder_inport_acquire_read(void *handle, esp_gmf_data_bus_block_t *bl
         _blk.buf_length = blk->buf_length;
         int ret = esp_gmf_db_acquire_read(audio_feeder.fifo, &_blk, wanted_size, block_ticks);
         if (ret < 0) {
-            ESP_LOGE(TAG, "Fifo acquire read failed (%d)", ret);
+            ESP_LOGE(TAG, "Ringbuffer acquire read failed (%d)", ret);
             return ret;
         }
         memcpy(blk->buf, _blk.buf, _blk.valid_size);
@@ -653,9 +665,9 @@ static int feeder_inport_acquire_read(void *handle, esp_gmf_data_bus_block_t *bl
         blk->valid_size = _blk.valid_size;
     } else {
         int ret = esp_gmf_db_acquire_read(audio_feeder.fifo, blk, wanted_size,
-                                          block_ticks);
+            block_ticks);
         if (ret < 0) {
-            ESP_LOGE(TAG, "Fifo acquire read failed (%d)", ret);
+                ESP_LOGE(TAG, "Fifo acquire read failed (%d)", ret);
             return ret;
         }
         esp_gmf_db_release_read(audio_feeder.fifo, blk, block_ticks);
@@ -732,7 +744,7 @@ static esp_err_t feeder_configure_all_decoders(void)
             break;
 
         default:
-            ESP_LOGE(TAG, "Unsupported decoder format: %d", decoder_cfg->format);
+            ESP_LOGE(TAG, "Unsupported decoder format: " AV_PROCESSOR_FOURCC_FMT, AV_PROCESSOR_FOURCC_ARGS(decoder_cfg->format));
             return ESP_ERR_NOT_SUPPORTED;
     }
 
@@ -1153,9 +1165,14 @@ esp_err_t audio_recorder_pause(void)
         ESP_LOGW(TAG, "Audio recorder is already paused");
         return ESP_OK;
     }
+    audio_recorder.basic_priority = uxTaskPriorityGet(NULL);
+    vTaskPrioritySet(NULL, 23);
+    vTaskDelay(pdMS_TO_TICKS(10));
     ESP_LOGI(TAG, "Pausing audio recorder...");
-    // esp_gmf_fifo_abort(audio_recorder.fifo);
-    esp_gmf_fifo_done_write(audio_recorder.fifo);
+    esp_gmf_fifo_abort(audio_recorder.fifo);
+    vTaskDelay(pdMS_TO_TICKS(50));
+    esp_gmf_fifo_reset(audio_recorder.fifo);
+    // esp_gmf_fifo_done_write(audio_recorder.fifo);
     esp_err_t ret = esp_gmf_pipeline_pause(audio_recorder.pipe);
     ESP_GMF_RET_ON_NOT_OK(TAG, ret, {return ESP_FAIL;}, "Failed to pause recorder pipeline");
     audio_recorder.state = AUDIO_RUN_STATE_PAUSED;
@@ -1173,6 +1190,8 @@ esp_err_t audio_recorder_resume(void)
         ESP_LOGW(TAG, "Audio recorder is already running");
         return ESP_OK;
     }
+    vTaskPrioritySet(NULL, audio_recorder.basic_priority);
+    vTaskDelay(pdMS_TO_TICKS(10));
     ESP_LOGI(TAG, "Resuming audio recorder...");
     esp_err_t ret = esp_gmf_pipeline_resume(audio_recorder.pipe);
     ESP_GMF_RET_ON_NOT_OK(TAG, ret, {return ESP_FAIL;}, "Failed to resume recorder pipeline");
@@ -1259,7 +1278,7 @@ esp_err_t audio_recorder_read_data(uint8_t *data, int data_size)
     esp_gmf_data_bus_block_t blk = {0};
     int ret = esp_gmf_fifo_acquire_read(audio_recorder.fifo, &blk, data_size, portMAX_DELAY);
     if (ret < 0) {
-        // ESP_LOGE(TAG, "Failed to acquire read from recorder FIFO (%d)", ret);
+        ESP_LOGE(TAG, "Failed to acquire read from recorder FIFO (%d)", ret);
         return ret;
     }
     int bytes_to_copy = blk.valid_size;
@@ -1434,7 +1453,6 @@ esp_err_t audio_feeder_stop(void)
         ESP_LOGW(TAG, "Audio feeder is already stopped");
         return ESP_OK;
     }
-    // esp_gmf_db_abort(audio_feeder.fifo);
     esp_gmf_db_done_write(audio_feeder.fifo);
     ESP_LOGI(TAG, "Stopping audio feeder...");
     esp_err_t ret = esp_gmf_pipeline_stop(audio_feeder.pipe);
