@@ -69,9 +69,9 @@
 
 ### 下载并配置工程
 
-1. 将实时对话式 AI 硬件示例工程克隆到 乐鑫 ADF examples 目录下。
+1. 将实时对话式 AI 硬件示例工程克隆到 乐鑫 IDF examples 目录下。
 
-   1. 进入 esp-adf/examples 目录。
+   1. 进入 esp-df/examples 目录。
 
    ```bash
    cd $IDF_PATH/examples
@@ -86,12 +86,12 @@
 
 ### 编译固件
 
-进入 `esp-adf/examples/ConversationalAI-Embedded-Kit-2.0/examples/high_quality_solution/espressif `目录下编译固件。
+进入 `esp-idf/examples/ConversationalAI-Embedded-Kit-2.0/examples/high_quality_solution/espressif `目录下编译固件。
 
 1. 进入 espressif 目录。
 
    ```bash
-   cd $ADF_PATH/examples/ConversationalAI-Embedded-Kit-2.0/examples/high_quality_solution/espressif
+   cd $IDF_PATH/examples/ConversationalAI-Embedded-Kit-2.0/examples/high_quality_solution/espressif
    ```
 2. 设置 实例ID、产品ID、产品秘钥、设备ID等参数。
 

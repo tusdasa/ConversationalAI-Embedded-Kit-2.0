@@ -43,12 +43,12 @@
 #### 低负载方案
 
 - 乐鑫 ESP32-S3-EchoEar （喵伴）: [运行设备端_乐鑫](examples/low_load_solution/espressif/README.md)  （完善中）
-- MacOS方案: [运行设备端_MacOS](examples/low_load_solution/macos/README.md)
+- MacOS方案: [运行设备端_MacOS](examples/low_load_solution/macos/README.md)（完善中）
 
 #### 高性能方案
 
 - 乐鑫 ESP32-S3-EchoEar（喵伴）: [运行设备端_乐鑫](examples/high_quality_solution/espressif/README.md)  （推荐）
-- MacOS方案: [运行设备端_MacOS](examples/high_quality_solution/macos/README.md)
+- MacOS方案: [运行设备端_MacOS](examples/high_quality_solution/macos/README.md)（完善中）
 
 ## 技术交流
 
