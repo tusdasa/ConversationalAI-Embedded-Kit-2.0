@@ -534,6 +534,20 @@ static esp_err_t recorder_configure_all_encoders(void)
         case AV_PROCESSOR_FORMAT_ID_G711U:
             ESP_LOGI(TAG, "Configuring G711 encoder");
             esp_gmf_obj_handle_t rate_cvt = NULL;
+            if (encoder_cfg->params.g711.audio_info.channels != 1 || encoder_cfg->params.g711.audio_info.sample_rate != 8000) {
+                ESP_LOGW(TAG, "G711 encoder only supports 1 channel and 8000 sample rate, using default config");
+            }
+            esp_g711_enc_config_t g711_enc_cfg = ESP_G711_ENC_CONFIG_DEFAULT();
+            g711_enc_cfg.channel = encoder_cfg->params.g711.audio_info.channels;
+            g711_enc_cfg.sample_rate = encoder_cfg->params.g711.audio_info.sample_rate;
+            g711_enc_cfg.frame_duration = encoder_cfg->params.g711.audio_info.frame_duration;
+            esp_audio_enc_config_t g711_cfg = {
+                .type = encoder_cfg->format == AV_PROCESSOR_FORMAT_ID_G711A ? ESP_AUDIO_TYPE_G711A : ESP_AUDIO_TYPE_G711U,
+                .cfg_sz = sizeof(esp_g711_enc_config_t),
+                .cfg = &g711_enc_cfg,
+            };
+            ret = esp_gmf_audio_enc_reconfig(enc_el, &g711_cfg);
+            ESP_GMF_RET_ON_NOT_OK(TAG, ret, {return ESP_FAIL;}, "Failed to configure G711 encoder");
             esp_gmf_pipeline_get_el_by_name(audio_recorder.pipe, "aud_rate_cvt", &rate_cvt);
             if (rate_cvt) {
                 ret = esp_gmf_rate_cvt_set_dest_rate(rate_cvt, 8000);
@@ -546,16 +560,16 @@ static esp_err_t recorder_configure_all_encoders(void)
             };
             ret = esp_gmf_pipeline_report_info(audio_recorder.pipe, ESP_GMF_INFO_SOUND, &req_info, sizeof(req_info));
             ESP_GMF_RET_ON_NOT_OK(TAG, ret, {return ESP_FAIL;}, "Failed to report sound info for G711 encoder");
-            info.sample_rates = 8000;
-            info.channels = 1;
-            info.bits = 16;
-            if (encoder_cfg->format == AV_PROCESSOR_FORMAT_ID_G711A) {
-                info.format_id = ESP_AUDIO_TYPE_G711A;
-            } else {
-                info.format_id = ESP_AUDIO_TYPE_G711U;
-            }
-            ret = esp_gmf_audio_enc_reconfig_by_sound_info(enc_el, &info);
-            ESP_GMF_RET_ON_NOT_OK(TAG, ret, {return ESP_FAIL;}, "Failed to configure G711 encoder");
+            // info.sample_rates = 8000;
+            // info.channels = 1;
+            // info.bits = 16;
+            // if (encoder_cfg->format == AV_PROCESSOR_FORMAT_ID_G711A) {
+            //     info.format_id = ESP_AUDIO_TYPE_G711A;
+            // } else {
+            //     info.format_id = ESP_AUDIO_TYPE_G711U;
+            // }
+            // ret = esp_gmf_audio_enc_reconfig_by_sound_info(enc_el, &info);
+            // ESP_GMF_RET_ON_NOT_OK(TAG, ret, {return ESP_FAIL;}, "Failed to configure G711 encoder");
             break;
 
         case AV_PROCESSOR_FORMAT_ID_OPUS:

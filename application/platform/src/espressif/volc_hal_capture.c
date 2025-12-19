@@ -117,7 +117,7 @@ volc_hal_capture_t volc_hal_capture_create(volc_hal_capture_config_t *config)
         capture->audio_capture_config.recorder_cfg.params.g711.audio_info.sample_rate = 16000;
         capture->audio_capture_config.recorder_cfg.params.g711.audio_info.sample_bits = 16;
         capture->audio_capture_config.recorder_cfg.params.g711.audio_info.channels = 1;
-        capture->audio_capture_config.recorder_cfg.params.g711.audio_info.frame_duration = 20;
+        capture->audio_capture_config.recorder_cfg.params.g711.audio_info.frame_duration = 60;
         capture->audio_capture_config.state = INITED;
         g_hal_context->capture_handle[VOLC_HAL_CAPTURE_AUDIO] = (volc_hal_capture_t)capture;
         break;
