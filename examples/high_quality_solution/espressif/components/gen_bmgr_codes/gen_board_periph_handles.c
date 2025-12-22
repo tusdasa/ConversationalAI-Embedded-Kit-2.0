@@ -22,42 +22,42 @@ esp_board_periph_entry_t g_esp_board_periph_handles[] = {
     {
         .next = &g_esp_board_periph_handles[1],
         .type = "gpio",
-        .role = "none",
+        .role = ESP_BOARD_PERIPH_ROLE_NONE,
         .init = periph_gpio_init,
         .deinit = periph_gpio_deinit
     },
     {
         .next = &g_esp_board_periph_handles[2],
         .type = "i2c",
-        .role = "master",
+        .role = ESP_BOARD_PERIPH_ROLE_MASTER,
         .init = periph_i2c_init,
         .deinit = periph_i2c_deinit
     },
     {
         .next = &g_esp_board_periph_handles[3],
         .type = "i2s",
-        .role = "master",
+        .role = ESP_BOARD_PERIPH_ROLE_MASTER,
         .init = periph_i2s_init,
         .deinit = periph_i2s_deinit
     },
     {
         .next = &g_esp_board_periph_handles[4],
         .type = "i2s",
-        .role = "slave",
+        .role = ESP_BOARD_PERIPH_ROLE_SLAVE,
         .init = periph_i2s_init,
         .deinit = periph_i2s_deinit
     },
     {
         .next = &g_esp_board_periph_handles[5],
         .type = "ledc",
-        .role = "none",
+        .role = ESP_BOARD_PERIPH_ROLE_NONE,
         .init = periph_ledc_init,
         .deinit = periph_ledc_deinit
     },
     {
         .next = NULL,
         .type = "spi",
-        .role = "master",
+        .role = ESP_BOARD_PERIPH_ROLE_MASTER,
         .init = periph_spi_init,
         .deinit = periph_spi_deinit
     },
