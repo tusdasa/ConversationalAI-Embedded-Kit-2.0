@@ -14,8 +14,8 @@
 ### 环境与硬件要求
 
 - 乐鑫 ESP32-S3-EchoEar
-- USB 数据线：一条 A 转 Micro-B 数据线
-- PC 设备服：编译和烧录。支持 Windows、Linux 或者 macOS 操作系统。（本文操作以 macOS 为例）
+- USB 数据线：一条 type-c 数据线
+- PC 设备：编译和烧录。支持 Windows、Linux 或者 macOS 操作系统。（本文操作以 macOS 为例）
 
 ### 配置乐鑫环境
 
