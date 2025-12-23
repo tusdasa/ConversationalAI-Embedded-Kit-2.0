@@ -36,7 +36,7 @@ typedef struct {
 } volc_room_info_t;
 
 int volc_device_register(volc_iot_info_t* info, char** output);
-int volc_get_rtc_config(volc_iot_info_t* info, int audio_codec, const char* bot_id, const char* task_id, volc_room_info_t* room_info);
+int volc_get_rtc_config(volc_iot_info_t* info, int audio_codec, const char* bot_id, const char* task_id, volc_room_info_t* room_info, const char* params);
 char* volc_generate_signature(const char* secret_key, const char* product_key, const char* device_name, int rnd, uint64_t timestamp, int auth_type);
 char* volc_generate_signature_ws(const char* secret_key, const char* product_key, const char* device_name, const char* instance_id, int rnd, uint64_t timestamp, int auth_type);
 

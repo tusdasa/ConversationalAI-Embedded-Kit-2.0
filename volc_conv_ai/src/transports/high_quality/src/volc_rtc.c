@@ -503,7 +503,7 @@ void volc_rtc_destroy(volc_rtc_t handle)
     LOGD("rtc destroy success");
 }
 
-int volc_rtc_start(volc_rtc_t rtc, const char* bot_id, volc_iot_info_t* iot_info) {
+int volc_rtc_start(volc_rtc_t rtc, const char* bot_id, volc_iot_info_t* iot_info, const char* params) {
     int ret = 0;
     volc_rtc_option_t *opt = NULL;
     rtc_impl_t* rtc_impl = (rtc_impl_t*) rtc;
@@ -512,7 +512,7 @@ int volc_rtc_start(volc_rtc_t rtc, const char* bot_id, volc_iot_info_t* iot_info
         return -1;
     }
     char* task_id = "test";
-    if (volc_get_rtc_config(iot_info, __volc_to_rtc_audio_codec(rtc_impl->audio_codec), bot_id, task_id, &rtc_impl->info)) {
+    if (volc_get_rtc_config(iot_info, __volc_to_rtc_audio_codec(rtc_impl->audio_codec), bot_id, task_id, &rtc_impl->info, params)) {
         LOGE("get rtc config failed");
         return -1;
     }

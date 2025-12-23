@@ -340,7 +340,7 @@ int volc_start(volc_engine_t handle, volc_opt_t* opt) {
 #endif
     } else if (opt->mode == VOLC_MODE_RTC) {
 #if defined(ENABLE_RTC_MODE)
-        ret = volc_rtc_start(engine->rtc, opt->bot_id, &engine->info);
+        ret = volc_rtc_start(engine->rtc, opt->bot_id, &engine->info, opt->params);
 #else
         LOGE("RTC mode is not enabled");
         ret = -1;

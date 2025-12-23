@@ -23,7 +23,7 @@ volc_rtc_t volc_rtc_create(const char* appid, void* context, cJSON* p_config, vo
 
 void volc_rtc_destroy(volc_rtc_t rtc);
 
-int volc_rtc_start(volc_rtc_t rtc, const char* bot_id, volc_iot_info_t* iot_info);
+int volc_rtc_start(volc_rtc_t rtc, const char* bot_id, volc_iot_info_t* iot_info, const char* params);
 
 int volc_rtc_stop(volc_rtc_t rtc);
 

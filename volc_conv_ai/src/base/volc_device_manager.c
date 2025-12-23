@@ -149,7 +149,7 @@ err_out_label:
 
 #define VOLC_GET_RTC_CONFIG_PATH "/2021-12-14/GetRTCConfig"
 #define VOLC_API_ACTION_GET_RTC_CONFIG  "Action=GetRTCConfig"
-int volc_get_rtc_config(volc_iot_info_t* info, int audio_codec, const char* bot_id, const char* task_id, volc_room_info_t* room_info) {
+int volc_get_rtc_config(volc_iot_info_t* info, int audio_codec, const char* bot_id, const char* task_id, volc_room_info_t* room_info, const char* params) {
     int ret = 0;
     uint64_t current_time = volc_osal_get_time_ms();
     int32_t random_num = (int32_t)current_time;
@@ -166,6 +166,18 @@ int volc_get_rtc_config(volc_iot_info_t* info, int audio_codec, const char* bot_
     cJSON_AddStringToObject(root, "bot_id", bot_id);
     cJSON_AddNumberToObject(root, "audio_codec", audio_codec);
     cJSON_AddStringToObject(root, "task_id", task_id);
+   
+    if(params){
+        cJSON* params_config = cJSON_Parse(params);
+
+        cJSON* agent_config = cJSON_CreateObject();
+        volc_json_read_object(params_config,"AgentConfig",&agent_config);
+        cJSON_AddItemToObject(root, "agent_config", agent_config);
+        
+        cJSON* config = cJSON_CreateObject();
+        volc_json_read_object(params_config,"Config",&config);
+        cJSON_AddItemToObject(root, "config", config);
+    }
     char* json_str = cJSON_PrintUnformatted(root);
     snprintf(url, sizeof(url), "%s%s?%s&%s", VOLC_IOT_HOST, VOLC_GET_RTC_CONFIG_PATH, VOLC_API_ACTION_GET_RTC_CONFIG, VOLC_API_VERSION_QUERY_PARAM);
     LOGI("url: %s, body: %s", url, json_str);
