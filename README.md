@@ -27,7 +27,8 @@
 - **volc_conv_ai**： 该目录下包含了与云端智能体建立网络连接相关的代码，对外是统一的建联接口（ volc_conv_ai/inc/volc_conv_ai.h ），底层建联有两种模式：
   
   - 低负载的建联方案(volc_conv_ai/src/transports/low_load)
-  - 高负载的建联方案（volc_conv_ai/src/transports/high_quality）
+  - 高质量的建联方案（volc_conv_ai/src/transports/high_quality）
+如果想快速移植这部分代码到当前仓库尚未支持的平台，请参考[平台移植](volc_conv_ai/README.md) 
 - **examples**:  该目录下给出了基于application和volc_conv_ai快速构建app的demo代码示例；
 
 ## 快速体验

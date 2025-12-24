@@ -43,7 +43,7 @@ typedef struct {
     int stack_in_ext;
 } volc_osal_thread_param_t;
 
-#if defined(PLATFORM_MACOS)
+#if defined(PLATFORM_MACOS)|| (PLATFORM_LINUX)
 int volc_osal_thread_create(volc_osal_tid_t* thread, const volc_osal_thread_param_t* param, void* (*start_routine)(void *), void* args);
 #else
 int volc_osal_thread_create(volc_osal_tid_t* thread, const volc_osal_thread_param_t* param, void (*start_routine)(void *), void* args);

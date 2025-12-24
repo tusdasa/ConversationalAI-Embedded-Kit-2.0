@@ -23,8 +23,27 @@ if(ESP_PLATFORM)
     message(STATUS "ESP_PLATFORM is defined, including esp.cmake")
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/espressif.cmake)
     return()
+elseif(PLATFORM_LINUX)
+    message(STATUS "PLATFORM_LINUX is defined, including linux.cmake")
+    include(${CMAKE_CURRENT_LIST_DIR}/cmake/linux.cmake)
 elseif(PLATFORM_MACOS)
     message(STATUS "PLATFORM_MACOS is defined, including macos.cmake")
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/macos.cmake)
     return()
+endif()
+
+if(PLATFORM_LINUX AND ENABLE_SAMPLE)
+  message(STATUS "Linux平台的test_sample")
+  add_executable(
+        test_sample
+        sample/sample.c
+  )
+  target_include_directories(
+    test_sample
+    PRIVATE
+    ${VOLC_CONV_AI_INCS}
+  )
+  target_link_libraries(test_sample PRIVATE
+    volc_conv_ai_a
+  )
 endif()
