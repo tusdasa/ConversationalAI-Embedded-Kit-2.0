@@ -78,12 +78,10 @@ if(ENABLE_RTC_MODE)
     message(STATUS "use high quality RTC mode")
     set(RTC_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../src/transports/high_quality/third_party/volc_rtc_engine_lite/libs/macos)
     message(STATUS "RTC_LIB_DIR: ${RTC_LIB_DIR}")
-    find_library(RTC_LIBRARIES NAMES VolcEngineRTCLite_a REQUIRED NO_CMAKE_FIND_ROOT_PATH PATHS ${RTC_LIB_DIR})
-    find_library(RTC_HAL_LIBRARIES NAMES VolcEngineRTCHal REQUIRED NO_CMAKE_FIND_ROOT_PATH PATHS ${RTC_LIB_DIR})
+    find_library(RTC_LIBRARIES NAMES VolcEngineRTCLite REQUIRED NO_CMAKE_FIND_ROOT_PATH PATHS ${RTC_LIB_DIR})
     
     target_link_libraries(volc_conv_ai_a PRIVATE
         ${RTC_LIBRARIES}
-        ${RTC_HAL_LIBRARIES}
     )
 endif()
 
