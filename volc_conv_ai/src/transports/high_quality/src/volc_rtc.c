@@ -402,7 +402,7 @@ static int __rtc_init(rtc_impl_t* engine, cJSON* p_config)
         return -1;
     }
     ret = volc_json_read_int(p_config, "video.codec", &video_codec);
-    if (ret != 0 || video_codec < 0 || video_codec > VIDEO_CODEC_TYPE_BYTEVC1) {
+    if (ret != 0 || video_codec < 0 || video_codec > VIDEO_DATA_TYPE_MJPEG) {
         LOGE("volc_rtc_create: read video_codec failed");
         return -1;
     }
@@ -547,7 +547,7 @@ int volc_rtc_send(volc_rtc_t handle, const void* data, int size, volc_data_info_
         case VOLC_DATA_TYPE_VIDEO: {
             video_info.data_type = (video_data_type_e) data_info->info.video.data_type;
             video_info.stream_type = VIDEO_STREAM_HIGH;
-            video_info.frame_type = VIDEO_FRAME_AUTO_DETECT;
+            video_info.frame_type = (video_info.data_type == VIDEO_DATA_TYPE_MJPEG) ? VIDEO_FRAME_KEY : VIDEO_FRAME_AUTO_DETECT;
             LOGD("Sending video to channel: %s, data length: %d, data type: %d", rtc->p_channel_name, size, video_info.data_type);
             byte_rtc_send_video_data(rtc->rtc, rtc->p_channel_name, data, size, &video_info);
             break;

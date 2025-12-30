@@ -55,11 +55,15 @@ typedef struct {
 typedef enum {
     VOLC_VIDEO_CODEC_TYPE_UNKNOWN = 0,
     VOLC_VIDEO_CODEC_TYPE_H264    = 1,
+    VOLC_VIDEO_CODEC_TYPE_H265    = 2,
+    VOLC_VIDEO_CODEC_TYPE_JPEG    = 3,
 } volc_video_codec_type_e;
 
 typedef enum {
     VOLC_VIDEO_DATA_TYPE_UNKNOWN = 0,
     VOLC_VIDEO_DATA_TYPE_H264    = 1,
+    VOLC_VIDEO_DATA_TYPE_H265    = 2,
+    VOLC_VIDEO_DATA_TYPE_JPEG    = 3,
 } volc_video_data_type_e;
 
 typedef struct {
