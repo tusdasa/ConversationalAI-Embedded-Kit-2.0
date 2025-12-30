@@ -210,10 +210,11 @@ static void __on_volc_message_data(volc_engine_t handle, const void *message, si
             if (message_buffer[0] == 's' && message_buffer[1] == 'u' && message_buffer[2] == 'b' && message_buffer[3] == 'v') {
                 __on_subtitle_message_received(root);
                 conv_service.wait_time = 0;
-                
             } else if (message_buffer[0] == 't' && message_buffer[1] == 'o' && message_buffer[2] == 'o' && message_buffer[3] == 'l') {
                 // function calling 消息
                 aios_event_pub(VOLC_FUNCTION_CALL_EXEC, root, NULL);
+            }else if (message_buffer[0] == 'i' && message_buffer[1] == 'n' && message_buffer[2] == 'f' && message_buffer[3] == 'o') {
+                aios_event_pub(VOLC_FUNCTION_CALL_TRIGGER, root, NULL);
             }
         }
      }

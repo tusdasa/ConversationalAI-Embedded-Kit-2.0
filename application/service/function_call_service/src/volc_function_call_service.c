@@ -10,7 +10,7 @@
 #include "volc_function_call_service.h"
 #include "volc_local_function_list.h"
 #include "aios.h"
-
+#include <stdio.h>
 #if __cplusplus
 extern "C" {
 #endif
@@ -61,7 +61,6 @@ static void __on_function_calling_message_received(const cJSON *root)
                 const char *action = (action_obj->valuestring);
                 adjust_audio_val(action);
                 volc_conv_service_t conv_service = get_conv_ai_service();
-                volc_send_text_to_agent(conv_service.engine, "别着急，我来给你调整音量", VOLC_AGENT_TYPE_TTS,2);
                 cJSON *fc_obj = cJSON_CreateObject();
                 cJSON_AddStringToObject(fc_obj, "ToolCallID", func_id);
                 cJSON_AddStringToObject(fc_obj, "Content", "音量已经调整了");
@@ -83,11 +82,36 @@ static void __on_function_calling_message_received(const cJSON *root)
     cJSON_Delete(root);
 }
 
+void  __on_function_calling_trigger(const cJSON *root)
+{
+/*
+{
+    "event_type": "function_calling",   // 事件类型，固定为此值
+    "function": "get_current_weather",  // 被触发的函数名，与您在 StartVoiceChat 中定义的名称一致
+    "tool_call_id": "call_12345",       // 本次函数调用的唯一ID，后续回传结果时需要用到
+    "response_id": "resp_abcde"         // 本次响应的唯一ID，可用于问题排查
+}
+*/  
+    cJSON *event_type_obj = cJSON_GetObjectItemCaseSensitive(root, "event_type");
+    if(event_type_obj && strcmp(event_type_obj->valuestring, "function_calling") == 0 ) {
+        cJSON *function_obj = cJSON_GetObjectItemCaseSensitive(root, "function");
+        if(function_obj && strcmp(function_obj->valuestring, "adjust_audio_val") == 0){
+            volc_conv_service_t conv_service = get_conv_ai_service();
+            volc_send_text_to_agent(conv_service.engine, "别着急，我来给你调整音量", VOLC_AGENT_TYPE_TTS,2);
+        }
+    }
+    cJSON_Delete(root);
+}
+
+
 static aios_ret_t __state_conversation(volc_function_call_service_t * const me, aios_event_t const * const e)
 {
     switch (e->id) {
         case VOLC_FUNCTION_CALL_EXEC:
             __on_function_calling_message_received((const cJSON *)e->data);
+            return AIOS_Ret_Handled;
+        case VOLC_FUNCTION_CALL_TRIGGER:
+            __on_function_calling_trigger((const cJSON *)e->data);
             return AIOS_Ret_Handled;
     }
 }
@@ -95,6 +119,8 @@ static aios_ret_t __state_conversation(volc_function_call_service_t * const me, 
 static aios_ret_t __state_init(volc_function_call_service_t * const me, aios_event_t const * const e)
 {
     AIOS_EVENT_SUB(VOLC_FUNCTION_CALL_EXEC); // 订阅事件
+    AIOS_EVENT_SUB(VOLC_FUNCTION_CALL_TRIGGER); // 订阅事件
+
     return AIOS_TRAN(__state_conversation);
 }
 

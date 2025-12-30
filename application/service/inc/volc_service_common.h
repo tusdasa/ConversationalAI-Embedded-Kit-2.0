@@ -17,6 +17,8 @@ enum {
 
     // function_call event:
     VOLC_FUNCTION_CALL_EXEC = 200,
+    VOLC_FUNCTION_CALL_TRIGGER = 201,
+
 
     // local logic event:
     VOLC_LOCAL_LOGIC_PLAY_WELCOME = 300,
