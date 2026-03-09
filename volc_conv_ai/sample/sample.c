@@ -112,6 +112,7 @@ static void __on_volc_message_data(volc_engine_t handle, const void *message, si
             if (message_buffer[0] == 's' && message_buffer[1] == 'u' && message_buffer[2] == 'b' && message_buffer[3] == 'v') {
                 __on_subtitle_message_received(root);
             }
+            cJSON_Delete(root);
         }
       }
 }
