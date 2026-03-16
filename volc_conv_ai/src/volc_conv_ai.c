@@ -107,6 +107,9 @@ static void __realtime_event_2_user_event(void* context, volc_msg_t* msg) {
         case VOLC_MSG_CONV_STATUS:
             __realtime_conv_status_to_user(impl, msg->data.conv_status);
             return;
+        case VOLC_MSG_QUOTA_EXCEEDED: 
+            event.code = VOLC_EV_QUOTA_EXCEEDED;
+            break;
         default:
             LOGW("Unknown message type: %d", msg->code);
             return; // Ignore unknown messages

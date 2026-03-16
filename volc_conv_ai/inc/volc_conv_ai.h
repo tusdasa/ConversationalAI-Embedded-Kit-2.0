@@ -103,6 +103,7 @@ typedef enum {
     VOLC_EV_UNKNOWN = 0,          // 未知事件
     VOLC_EV_CONNECTED,            // 成功连接
     VOLC_EV_DISCONNECTED,         // 断开连接
+    VOLC_EV_QUOTA_EXCEEDED,
 } volc_event_code_e;
 
 typedef struct {

@@ -29,6 +29,7 @@ typedef enum {
     VOLC_MSG_KEY_FRAME_REQ,          // 关键帧请求
     VOLC_MSG_TARGET_BITRATE_CHANGED, // 目标码率变化
     VOLC_MSG_CONV_STATUS,          // 会话状态
+    VOLC_MSG_QUOTA_EXCEEDED,     // 资源耗尽
 } volc_msg_e;
 
 typedef struct {

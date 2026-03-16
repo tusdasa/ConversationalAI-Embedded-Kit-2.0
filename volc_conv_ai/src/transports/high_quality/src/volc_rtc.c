@@ -153,13 +153,26 @@ static bool _is_target_message(const uint8_t* message, const char* target) {
     return true;
 }
 
-static int _on_conversion_status_message_parsed(uint8_t* message) {
+static int _on_conversion_status_message_parsed(uint8_t* message, rtc_impl_t* rtc) {
     int c = -1;
+    char* error_reason = NULL;
+    volc_msg_t msg = { 0 };
     cJSON *root = cJSON_Parse((const char*)message);
     if (root == NULL) {
         return c;
     }
     volc_json_read_int(root, "Stage.Code", &c);
+    volc_json_read_string(root, "ErrorInfo.Reason", &error_reason);
+    if(error_reason != NULL) {
+        LOGW("ErrorInfo.Reason %s",error_reason);
+        if(strcmp(error_reason, "preParamCheck:AI license duration quota exceeded") == 0) {
+            msg.code = VOLC_MSG_QUOTA_EXCEEDED;
+            msg.data.conv_status = 0;
+            _send_message_2_user(rtc, &msg);
+        }
+        HAL_SAFE_FREE(error_reason);
+        return -1;
+    }
     if(root != NULL) cJSON_Delete(root);
     return c;
 }
@@ -306,6 +319,7 @@ static void _on_token_privilege_will_expire(byte_rtc_engine_t engine, const char
 
 static void _on_message_received(byte_rtc_engine_t engine, const char* channel_name, const char* src, const uint8_t* message, int size, bool binary)
 {
+
     int ret = 0;
     volc_msg_t msg = { 0 };
     rtc_impl_t* rtc = (rtc_impl_t*) byte_rtc_get_user_data(engine);
@@ -319,10 +333,12 @@ static void _on_message_received(byte_rtc_engine_t engine, const char* channel_n
     }
 
     if (_is_target_message(message, MAGIC_CONV)) {
-        ret = _on_conversion_status_message_parsed((uint8_t *)message + MAGIC_OFFSET);
-        msg.code = VOLC_MSG_CONV_STATUS;
-        msg.data.conv_status = ret;
-        _send_message_2_user(rtc, &msg);
+        ret = _on_conversion_status_message_parsed((uint8_t *)message + MAGIC_OFFSET,rtc);
+        if(ret != -1){
+            msg.code = VOLC_MSG_CONV_STATUS;
+            msg.data.conv_status = ret;
+            _send_message_2_user(rtc, &msg);
+        }
         return;
     }
     __send_data_2_user(rtc, message, size, &info);

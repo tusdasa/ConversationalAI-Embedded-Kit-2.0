@@ -3,13 +3,11 @@
 #include <cJSON.h>
 #include <string.h>
 
-
 #define CONFIG_VOLC_BOT_ID "xxxx"
 #define CONFIG_VOLC_INSTANCE_ID "xxxx"
 #define CONFIG_VOLC_PRODUCT_KEY "xxxx"
 #define CONFIG_VOLC_PRODUCT_SECRET "xxxx"
 #define CONFIG_VOLC_DEVICE_NAME "xxxx"
-
 
 #define CONV_AI_CONFIG_FORMAT "{\
   \"ver\": 1,\
@@ -52,6 +50,8 @@ static void __on_volc_event(volc_engine_t handle, volc_event_t *event, void *use
     case VOLC_EV_DISCONNECTED:
         printf( "Volc Engine disconnected \n");
         break;
+    case VOLC_EV_QUOTA_EXCEEDED:
+        printf("Volc Engine quota exceeded\n");
     default:
         printf("Volc Engine event: %d \n", event->code);
         break;
