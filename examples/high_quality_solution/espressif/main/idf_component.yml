@@ -64,3 +64,11 @@ dependencies:
 
   # protocol_examples_common:
   #   path: ${IDF_PATH}/examples/common_components/protocol_examples_common
+  # espressif2022/echo_base_control: ^0.0.2~1
+  # shootao/esp_bsp_manager: ^0.1.1
+
+
+
+  
+  espressif2022/esp_vocat_base_control: ^1.0.0
+  espressif/esp_board_manager: ^0.5.5

@@ -41,6 +41,7 @@
 #include "esp_mac.h"
 #include "esp_gmf_afe.h"
 #include "mmap_generate_eaf.h"
+#include "volc_osal.h"
 
 #define STATS_TASK_PRIO 5
 
@@ -218,7 +219,13 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to connect to network");
         return;
     }
-    xTaskCreate(&aios_task, "aios_task", 4096, NULL, 5, NULL);
+    volc_osal_tid_t            aios_thread;
+    volc_osal_thread_param_t param = {0};
+    snprintf(param.name, sizeof(param.name), "%s", "aios_task");
+    param.stack_size = 8 * 1024;
+    param.priority = 4;
+    param.stack_in_ext = 1;
+    esp_err_t r = volc_osal_thread_create(&aios_thread, &param, aios_task, NULL);
 
     hal_level_init();
     int index = MMAP_EAF_HAPPY_EAF;

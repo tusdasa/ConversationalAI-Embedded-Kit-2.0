@@ -174,6 +174,7 @@ typedef struct {
     audio_task_config_t            recorder_task_config;   /*!< Recorder task configuration */
     av_processor_encoder_config_t  encoder_cfg;            /*!< Encoder configuration */
     recorder_event_callback_t      recorder_event_cb;     /*!< Recorder event callback */
+    int   (*audio_raw_input_cb)(uint8_t *data, int data_size, int *want_size); /*!< Audio raw input/output callback, used for feeding raw audio data into AFE or fetching raw audio data from AFE */
     void                          *recorder_ctx;          /*!< Recorder context */
 } audio_recorder_config_t;
 

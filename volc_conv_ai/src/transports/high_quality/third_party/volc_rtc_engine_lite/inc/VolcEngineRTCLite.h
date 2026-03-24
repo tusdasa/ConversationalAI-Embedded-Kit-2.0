@@ -1035,8 +1035,7 @@ extern __byte_rtc_api__ int byte_rtc_set_video_codec(byte_rtc_engine_t engine, v
  * @param room 房间名
  * @param uid 用户名
  * @param token 动态密钥，用于对加入房间用户进行鉴权验证  <br>
- * @param options 房间音视频自动订阅设置，参看 byte_rtc_room_options_t{@link #byte_rtc_room_options_t} <br>
- *                此版本无效，默认使用自动订阅
+ * @param options 房间音视频自动订阅和发布设置，参看 byte_rtc_room_options_t{@link #byte_rtc_room_options_t} <br>
  * @return 方法调用结果：<br>
  *         - 0：成功 <br>
  *         - -1：引擎实例不存在 <br>

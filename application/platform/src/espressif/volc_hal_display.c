@@ -270,11 +270,13 @@ volc_hal_display_t volc_hal_display_create(volc_hal_display_config_t* config)
     snprintf(param.name, sizeof(param.name), "%s", "volc_capture_task");
     param.stack_size = 8 * 1024;
     param.priority = 4;
+    param.stack_in_ext = 1;
     esp_err_t ret = volc_osal_thread_create(&global_display_impl->display_thread, &param, __emote_task, NULL);
 
     global_display_impl->is_init = true;
 
     g_hal_context->display_handle = (volc_hal_display_t)global_display_impl;
+    volc_hal_display_set_brightness(global_display_impl,80);
     return (volc_hal_display_t)global_display_impl;
 }
 

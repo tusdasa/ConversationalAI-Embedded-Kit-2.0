@@ -13,7 +13,6 @@
 #include "periph_gpio.h"
 #include "periph_i2c.h"
 #include "periph_i2s.h"
-#include "periph_i2s.h"
 #include "periph_ledc.h"
 #include "periph_spi.h"
 
@@ -42,13 +41,6 @@ esp_board_periph_entry_t g_esp_board_periph_handles[] = {
     },
     {
         .next = &g_esp_board_periph_handles[4],
-        .type = "i2s",
-        .role = ESP_BOARD_PERIPH_ROLE_SLAVE,
-        .init = periph_i2s_init,
-        .deinit = periph_i2s_deinit
-    },
-    {
-        .next = &g_esp_board_periph_handles[5],
         .type = "ledc",
         .role = ESP_BOARD_PERIPH_ROLE_NONE,
         .init = periph_ledc_init,

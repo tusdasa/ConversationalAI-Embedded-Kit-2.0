@@ -257,6 +257,9 @@ static int recorder_inport_acquire_read(void *handle, esp_gmf_data_bus_block_t *
 #if CONFIG_MEDIA_DUMP_ENABLE && CONFIG_MEDIA_DUMP_AUDIO_BEFORE_AEC
     media_dump_feed(NULL, (uint8_t *)blk->buf, blk->valid_size);
 #endif  /* CONFIG_MEDIA_DUMP_ENABLE && CONFIG_MEDIA_DUMP_AUDIO_BEFORE_AEC */
+if(audio_recorder.config.audio_raw_input_cb) {
+    audio_recorder.config.audio_raw_input_cb(blk->buf, blk->valid_size, &wanted_size);
+}
     return ESP_GMF_IO_OK;
 }
 

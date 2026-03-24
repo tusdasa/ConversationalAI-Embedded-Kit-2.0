@@ -39,7 +39,7 @@ idf_component_register(
     SRCS ${VOLC_APP_SRCS}
     INCLUDE_DIRS ${VOLC_APP_INCS}
     REQUIRES volc_conv_ai
-    PRIV_REQUIRES lvgl button av_processor esp_board_manager hw_init esp_mmap_assets esp_emote_gfx
+    PRIV_REQUIRES lvgl button av_processor esp_board_manager hw_init esp_mmap_assets esp_emote_gfx esp_vocat_base_control
 )
 
 # Compiler flags

@@ -12,9 +12,9 @@
 
 // Board information
 const esp_board_info_t g_esp_board_info = {
-    .name = "echoear_core_board_v1_2",
+    .name = "esp_vocat_board_v1_2",
     .chip = "esp32s3",
     .version = "1.2.0",
-    .description = "EchoEar Core Board V1.2- AI Pet Companion Development Board",
+    .description = "ESP VoCat Board V1.2- AI Pet Companion Development Board",
     .manufacturer = "ESPRESSIF",
 };

@@ -38,6 +38,7 @@ static aios_ret_t __state_conversation(volc_conv_service_manager_t * const me, a
                 snprintf(param.name, sizeof(param.name), "%s", "conv_ai");
                 param.stack_size = 8*1024;
                 param.priority = 5;
+                param.stack_in_ext = 1;
                 volc_osal_thread_create(&me->conv_thread_id, &param, conv_ai_service_task,NULL);
             }
             return AIOS_Ret_Handled;

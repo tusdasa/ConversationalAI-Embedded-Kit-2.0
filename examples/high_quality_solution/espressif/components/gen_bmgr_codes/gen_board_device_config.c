@@ -11,29 +11,43 @@
 #include <stdlib.h>
 #include "esp_board_device.h"
 #include "dev_audio_codec.h"
-#include "dev_display_lcd_spi.h"
-#include "dev_fatfs_sdcard.h"
+#include "dev_display_lcd.h"
+#include "dev_fs_fat.h"
 #include "dev_gpio_ctrl.h"
 #include "dev_lcd_touch_i2c.h"
 #include "dev_ledc_ctrl.h"
+#include "dev_power_ctrl.h"
 #include "driver/sdmmc_host.h"
-#include "driver/sdmmc_types.h"
+#include "sdmmc_cmd.h"
 
 // Device configuration structures
-const static dev_gpio_ctrl_config_t esp_bmgr_audio_power_cfg = {
+const static dev_power_ctrl_config_t esp_bmgr_audio_power_cfg = {
     .name = "audio_power",
-    .type = "gpio_ctrl",
-    .gpio_name = "gpio_power_audio",
-    .active_level = 1,
-    .default_level = 0,
+    .sub_type = "gpio",
+    .sub_cfg = {
+            .gpio = {
+                        .gpio_name = "gpio_power_audio",
+                        .active_level = 1,
+                    },
+        },
 };
 
-const static dev_gpio_ctrl_config_t esp_bmgr_lcd_power_cfg = {
-    .name = "lcd_power",
-    .type = "gpio_ctrl",
-    .gpio_name = "gpio_power_lcd",
-    .active_level = 0,
-    .default_level = 1,
+const static dev_power_ctrl_config_t esp_bmgr_lcd_sdcard_power_cfg = {
+    .name = "lcd_sdcard_power",
+    .sub_type = "gpio",
+    .sub_cfg = {
+            .gpio = {
+                        .gpio_name = "gpio_power_lcd_sdcard",
+                        .active_level = 0,
+                    },
+        },
+};
+
+const static dev_ledc_ctrl_config_t esp_bmgr_lcd_brightness_cfg = {
+    .name = "lcd_brightness",
+    .type = "ledc_ctrl",
+    .ledc_name = "ledc_backlight",
+    .default_percent = 0,
 };
 
 const static dev_audio_codec_config_t esp_bmgr_audio_dac_cfg = {
@@ -64,6 +78,7 @@ const static dev_audio_codec_config_t esp_bmgr_audio_dac_cfg = {
     .i2s_cfg = {
             .name = "i2s_audio_out",
             .port = 0,
+            .clk_src = 0,
         },
     .metadata = NULL,
     .metadata_size = 0,
@@ -101,6 +116,7 @@ const static dev_audio_codec_config_t esp_bmgr_audio_adc_cfg = {
     .i2s_cfg = {
             .name = "i2s_audio_in",
             .port = 0,
+            .clk_src = 0,
         },
     .metadata = NULL,
     .metadata_size = 0,
@@ -110,78 +126,90 @@ const static dev_audio_codec_config_t esp_bmgr_audio_adc_cfg = {
     .alc_enabled = false,
 };
 
-const static dev_fatfs_sdcard_config_t esp_bmgr_fs_sdcard_cfg = {
+const static dev_fs_fat_config_t esp_bmgr_fs_sdcard_cfg = {
     .name = "fs_sdcard",
     .mount_point = "/sdcard",
+    .frequency = SDMMC_FREQ_HIGHSPEED,
     .vfs_config = {
             .format_if_mount_failed = true,
             .max_files = 5,
             .allocation_unit_size = 16384,
         },
-    .frequency = SDMMC_FREQ_HIGHSPEED,
-    .slot = SDMMC_HOST_SLOT_1,
-    .bus_width = 1,
-    .slot_flags = SDMMC_SLOT_FLAG_INTERNAL_PULLUP,
-    .pins = {
-            .clk = 16,
-            .cmd = 38,
-            .d0 = 17,
-            .d1 = -1,
-            .d2 = -1,
-            .d3 = -1,
-            .d4 = -1,
-            .d5 = -1,
-            .d6 = -1,
-            .d7 = -1,
-            .cd = -1,
-            .wp = -1,
+    .sub_type = "sdmmc",
+    .sub_cfg = {
+            .sdmmc = {
+                        .slot = SDMMC_HOST_SLOT_1,
+                        .bus_width = 1,
+                        .slot_flags = SDMMC_SLOT_FLAG_INTERNAL_PULLUP,
+                        .pins = {
+                                        .clk = 16,
+                                        .cmd = 38,
+                                        .d0 = 17,
+                                        .d1 = -1,
+                                        .d2 = -1,
+                                        .d3 = -1,
+                                        .d4 = -1,
+                                        .d5 = -1,
+                                        .d6 = -1,
+                                        .d7 = -1,
+                                        .cd = -1,
+                                        .wp = -1,
+                                    },
+                        .ldo_chan_id = -1,
+                    },
         },
-    .ldo_chan_id = -1,
 };
 
-const static dev_display_lcd_spi_config_t esp_bmgr_display_lcd_cfg = {
+const static dev_display_lcd_config_t esp_bmgr_display_lcd_cfg = {
     .name = "display_lcd",
     .chip = "st77916",
-    .type = "display_lcd_spi",
-    .spi_name = "spi_display",
-    .io_spi_config = {
-            .cs_gpio_num = 14,
-            .dc_gpio_num = 45,
-            .spi_mode = 0,
-            .pclk_hz = 40000000,
-            .trans_queue_depth = 2,
-            .on_color_trans_done = NULL,
-            .user_ctx = NULL,
-            .lcd_cmd_bits = 32,
-            .lcd_param_bits = 8,
-            .cs_ena_pretrans = 0,
-            .cs_ena_posttrans = 0,
-            .flags = {
-                    .dc_high_on_cmd = false,
-                    .dc_low_on_data = false,
-                    .dc_low_on_param = false,
-                    .octal_mode = false,
-                    .quad_mode = true,
-                    .sio_mode = false,
-                    .lsb_first = false,
-                    .cs_high_active = false,
-                },
-        },
-    .panel_config = {
-            .reset_gpio_num = 47,
-            .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
-            .data_endian = LCD_RGB_DATA_ENDIAN_BIG,
-            .bits_per_pixel = 16,
-            .flags = {
-                    .reset_active_high = true,
-                },
-            .vendor_config = NULL,
-        },
+    .sub_type = "spi",
+    .lcd_width = 360,
+    .lcd_height = 360,
     .swap_xy = false,
     .mirror_x = false,
     .mirror_y = false,
-    .x_max = 360,
-    .y_max = 360,
+    .need_reset = false,
+    .invert_color = false,
+    .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
+    .data_endian = LCD_RGB_DATA_ENDIAN_BIG,
+    .bits_per_pixel = 16,
+    .sub_cfg = {
+            .spi = {
+                        .spi_name = "spi_display",
+                        .panel_config = {
+                                        .reset_gpio_num = 47,
+                                        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
+                                        .data_endian = LCD_RGB_DATA_ENDIAN_BIG,
+                                        .bits_per_pixel = 16,
+                                        .flags = {
+                                                            .reset_active_high = true,
+                                                        },
+                                        .vendor_config = NULL,
+                                    },
+                        .io_spi_config = {
+                                        .cs_gpio_num = 14,
+                                        .dc_gpio_num = 45,
+                                        .spi_mode = 0,
+                                        .pclk_hz = 40000000,
+                                        .trans_queue_depth = 2,
+                                        .lcd_cmd_bits = 32,
+                                        .lcd_param_bits = 8,
+                                        .cs_ena_pretrans = 0,
+                                        .cs_ena_posttrans = 0,
+                                        .flags = {
+                                                            .dc_high_on_cmd = false,
+                                                            .dc_low_on_data = false,
+                                                            .dc_low_on_param = false,
+                                                            .octal_mode = false,
+                                                            .quad_mode = true,
+                                                            .sio_mode = false,
+                                                            .lsb_first = false,
+                                                            .cs_high_active = false,
+                                                        },
+                                    },
+                    },
+        },
 };
 
 const static dev_lcd_touch_i2c_config_t esp_bmgr_lcd_touch_cfg = {
@@ -198,9 +226,9 @@ const static dev_lcd_touch_i2c_config_t esp_bmgr_lcd_touch_cfg = {
             .lcd_param_bits = 0,
             .scl_speed_hz = 100000,
             .flags = {
-                    .dc_low_on_data = false,
-                    .disable_control_phase = true,
-                },
+                        .dc_low_on_data = false,
+                        .disable_control_phase = true,
+                    },
         },
     .touch_config = {
             .x_max = 360,
@@ -208,14 +236,14 @@ const static dev_lcd_touch_i2c_config_t esp_bmgr_lcd_touch_cfg = {
             .rst_gpio_num = -1,
             .int_gpio_num = 10,
             .levels = {
-                    .reset = 0,
-                    .interrupt = 0,
-                },
+                        .reset = 0,
+                        .interrupt = 0,
+                    },
             .flags = {
-                    .swap_xy = false,
-                    .mirror_x = false,
-                    .mirror_y = false,
-                },
+                        .swap_xy = false,
+                        .mirror_x = false,
+                        .mirror_y = false,
+                    },
             .process_coordinates = NULL,
             .interrupt_callback = NULL,
             .user_data = NULL,
@@ -223,11 +251,12 @@ const static dev_lcd_touch_i2c_config_t esp_bmgr_lcd_touch_cfg = {
         },
 };
 
-const static dev_ledc_ctrl_config_t esp_bmgr_lcd_brightness_cfg = {
-    .name = "lcd_brightness",
-    .type = "ledc_ctrl",
-    .ledc_name = "ledc_backlight",
-    .default_percent = 100,
+const static dev_gpio_ctrl_config_t esp_bmgr_led_green_cfg = {
+    .name = "led_green",
+    .type = "gpio_ctrl",
+    .gpio_name = "gpio_led_g",
+    .active_level = 0,
+    .default_level = 1,
 };
 
 // Device descriptor array
@@ -235,53 +264,65 @@ const esp_board_device_desc_t g_esp_board_devices[] = {
     {
         .next = &g_esp_board_devices[1],
         .name = "audio_power",
-        .type = "gpio_ctrl",
+        .type = "power_ctrl",
         .cfg = &esp_bmgr_audio_power_cfg,
         .cfg_size = sizeof(esp_bmgr_audio_power_cfg),
         .init_skip = false,
     },
     {
         .next = &g_esp_board_devices[2],
-        .name = "lcd_power",
-        .type = "gpio_ctrl",
-        .cfg = &esp_bmgr_lcd_power_cfg,
-        .cfg_size = sizeof(esp_bmgr_lcd_power_cfg),
+        .name = "lcd_sdcard_power",
+        .type = "power_ctrl",
+        .cfg = &esp_bmgr_lcd_sdcard_power_cfg,
+        .cfg_size = sizeof(esp_bmgr_lcd_sdcard_power_cfg),
         .init_skip = false,
     },
     {
         .next = &g_esp_board_devices[3],
+        .name = "lcd_brightness",
+        .type = "ledc_ctrl",
+        .cfg = &esp_bmgr_lcd_brightness_cfg,
+        .cfg_size = sizeof(esp_bmgr_lcd_brightness_cfg),
+        .init_skip = false,
+    },
+    {
+        .next = &g_esp_board_devices[4],
         .name = "audio_dac",
         .type = "audio_codec",
         .cfg = &esp_bmgr_audio_dac_cfg,
         .cfg_size = sizeof(esp_bmgr_audio_dac_cfg),
         .init_skip = false,
+        .power_ctrl_device = "audio_power",
     },
     {
-        .next = &g_esp_board_devices[4],
+        .next = &g_esp_board_devices[5],
         .name = "audio_adc",
         .type = "audio_codec",
         .cfg = &esp_bmgr_audio_adc_cfg,
         .cfg_size = sizeof(esp_bmgr_audio_adc_cfg),
         .init_skip = false,
-    },
-    {
-        .next = &g_esp_board_devices[5],
-        .name = "fs_sdcard",
-        .type = "fatfs_sdcard",
-        .cfg = &esp_bmgr_fs_sdcard_cfg,
-        .cfg_size = sizeof(esp_bmgr_fs_sdcard_cfg),
-        .init_skip = false,
+        .power_ctrl_device = "audio_power",
     },
     {
         .next = &g_esp_board_devices[6],
-        .name = "display_lcd",
-        .type = "display_lcd_spi",
-        .cfg = &esp_bmgr_display_lcd_cfg,
-        .cfg_size = sizeof(esp_bmgr_display_lcd_cfg),
+        .name = "fs_sdcard",
+        .type = "fs_fat",
+        .cfg = &esp_bmgr_fs_sdcard_cfg,
+        .cfg_size = sizeof(esp_bmgr_fs_sdcard_cfg),
         .init_skip = false,
+        .power_ctrl_device = "lcd_sdcard_power",
     },
     {
         .next = &g_esp_board_devices[7],
+        .name = "display_lcd",
+        .type = "display_lcd",
+        .cfg = &esp_bmgr_display_lcd_cfg,
+        .cfg_size = sizeof(esp_bmgr_display_lcd_cfg),
+        .init_skip = false,
+        .power_ctrl_device = "lcd_sdcard_power",
+    },
+    {
+        .next = &g_esp_board_devices[8],
         .name = "lcd_touch",
         .type = "lcd_touch_i2c",
         .cfg = &esp_bmgr_lcd_touch_cfg,
@@ -290,10 +331,10 @@ const esp_board_device_desc_t g_esp_board_devices[] = {
     },
     {
         .next = NULL,
-        .name = "lcd_brightness",
-        .type = "ledc_ctrl",
-        .cfg = &esp_bmgr_lcd_brightness_cfg,
-        .cfg_size = sizeof(esp_bmgr_lcd_brightness_cfg),
+        .name = "led_green",
+        .type = "gpio_ctrl",
+        .cfg = &esp_bmgr_led_green_cfg,
+        .cfg_size = sizeof(esp_bmgr_led_green_cfg),
         .init_skip = false,
     },
 };

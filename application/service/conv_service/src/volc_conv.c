@@ -47,6 +47,9 @@ extern "C" {
       \"{\\\"debug\\\":{\\\"log_to_console\\\":1}}\",\
       \"{\\\"rtc\\\":{\\\"access\\\":{\\\"concurrent_requests\\\":1}}}\",\
       \"{\\\"rtc\\\":{\\\"ice\\\":{\\\"concurrent_agents\\\":1}}}\",\
+      \"{\\\"rtc\\\":{\\\"thread\\\":{\\\"stack_in_ext\\\":1}}}\",\
+        \"{\\\"rtc\\\":{\\\"network\\\":{\\\"enable_audio_jitter2\\\":0}}}\",\
+       \"{\\\"rtc\\\":{\\\"report\\\":{\\\"enable\\\":0}}}\",\
       \"{\\\"audio\\\":{\\\"codec\\\":{\\\"pcma\\\":{\\\"s_samples_per_frame\\\":480}}}}\"\
     ]\
   }\

@@ -147,6 +147,7 @@ static void __start_audio_capture(volc_hal_capture_impl_t *capture)
     snprintf(param.name, sizeof(param.name), "%s", "volc_capture_task");
     param.stack_size = 4 * 1024;
     param.priority = 5;
+    param.stack_in_ext = 1;
     capture->is_started = true;
     capture->audio_capture_config.state = CAPTURE;
     esp_err_t ret = volc_osal_thread_create(&capture->capture_thread, &param, __volc_audio_capture_task, capture);
@@ -170,6 +171,7 @@ static void __start_audio_wake(volc_hal_capture_impl_t *capture)
     snprintf(param.name, sizeof(param.name), "%s", "volc_capture_task");
     param.stack_size = 4 * 1024;
     param.priority = 5;
+    param.stack_in_ext = 1;
     capture->is_started = true;
     capture->audio_capture_config.state = WAKEUP;
     esp_err_t ret = volc_osal_thread_create(&capture->capture_thread, &param, __volc_audio_capture_task, capture);

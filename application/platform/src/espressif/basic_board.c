@@ -31,7 +31,7 @@
 
 #include "esp_board_manager.h"
 #include "dev_audio_codec.h"
-#include "dev_display_lcd_spi.h"
+#include "dev_display_lcd.h"
 
 #include "basic_board.h"
 
@@ -47,7 +47,7 @@ typedef struct {
 
 static const board_config_t supported_boards[] = {
     {"esp32_s3_korvo2_v3", "RMNM", 16000, 32, 2},
-    {"echoear_core_board_v1_2", "RMNM", 16000, 32, 2},
+    {"esp_vocat_board_v1_2", "RMNM", 16000, 32, 2},
     {"esp_box_3", "RMNM", 16000, 32, 2},
     {"ESP32_S3_Korvo_2L", "MR", 16000, 16, 2},
 };
@@ -104,7 +104,7 @@ static esp_err_t setup_board_devices(basic_board_periph_t *periph)
     rec_dev_handles2 = rec_dev_handles;
     ret = esp_board_manager_get_device_handle("display_lcd", &lcd_handle);
     if (ret == ESP_OK && lcd_handle) {
-        dev_display_lcd_spi_handles_t *lcd_handles = (dev_display_lcd_spi_handles_t *)lcd_handle;
+        dev_display_lcd_handles_t *lcd_handles = (dev_display_lcd_handles_t *)lcd_handle;
         periph->lcd_pannel = lcd_handles->panel_handle;
         ESP_LOGI(TAG, "LCD panel handle: %p", periph->lcd_pannel);
     } else {
